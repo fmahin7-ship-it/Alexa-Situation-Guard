@@ -1,0 +1,96 @@
+{
+  "id": "assignment_week",
+  "name": "Assignment due Monday",
+  "people": [
+    { "id": "me", "name": "Me" }
+  ],
+  "goals": [
+    {
+      "id": "goal_submit",
+      "description": "Submit assignment by Monday 17:00",
+      "owner_id": "me"
+    }
+  ],
+  "resources": [
+    {
+      "id": "laptop",
+      "type": "device",
+      "name": "Laptop",
+      "availability": "ordered"
+    },
+    {
+      "id": "github_repo",
+      "type": "system",
+      "name": "GitHub repository",
+      "availability": "ready"
+    }
+  ],
+  "commitments": [
+    {
+      "id": "c_delivery",
+      "owner_id": "me",
+      "action": "receive_laptop",
+      "start": "2026-09-20",
+      "end": "2026-09-20",
+      "resource_ids": ["laptop"],
+      "dependency_ids": [],
+      "status": "planned",
+      "meta": { "carrier": "courier" }
+    },
+    {
+      "id": "c_experiment",
+      "owner_id": "me",
+      "action": "run_experiment",
+      "start": "2026-09-21",
+      "end": "2026-09-21",
+      "resource_ids": ["laptop"],
+      "dependency_ids": ["dep_experiment_needs_laptop"],
+      "status": "planned",
+      "meta": {}
+    },
+    {
+      "id": "c_submit",
+      "owner_id": "me",
+      "action": "submit_assignment",
+      "start": "2026-09-22T17:00",
+      "end": "2026-09-22T17:00",
+      "resource_ids": ["github_repo", "laptop"],
+      "dependency_ids": ["dep_submit_needs_experiment"],
+      "status": "planned",
+      "meta": { "course": "AAIE" }
+    }
+  ],
+  "dependencies": [
+    {
+      "id": "dep_experiment_needs_laptop",
+      "from_id": "c_experiment",
+      "to_id": "c_delivery",
+      "kind": "requires"
+    },
+    {
+      "id": "dep_submit_needs_experiment",
+      "from_id": "c_submit",
+      "to_id": "c_experiment",
+      "kind": "requires"
+    }
+  ],
+  "constraints": [
+    {
+      "id": "con_deadline",
+      "description": "Submission must complete by Monday 17:00",
+      "commitment_id": "c_submit",
+      "before": "2026-09-22T17:00",
+      "expression": null
+    }
+  ],
+  "events": [
+    {
+      "id": "ev_delivery_eta",
+      "type": "delivery_update",
+      "description": "Laptop ETA currently Monday morning",
+      "at": "2026-09-19",
+      "related_ids": ["c_delivery", "laptop"],
+      "meta": { "eta": "2026-09-22 morning" }
+    }
+  ]
+}

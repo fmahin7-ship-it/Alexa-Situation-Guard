@@ -1,0 +1,57 @@
+{
+  "id": "tv_evening",
+  "name": "Friday evening TV",
+  "people": [
+    { "id": "me", "name": "Me" },
+    { "id": "sister", "name": "Sister" }
+  ],
+  "goals": [
+    {
+      "id": "goal_watch",
+      "description": "Both watch our chosen shows tonight",
+      "owner_id": null
+    }
+  ],
+  "resources": [
+    {
+      "id": "living_room_tv",
+      "type": "tv",
+      "name": "Living room TV",
+      "availability": "shared"
+    }
+  ],
+  "commitments": [
+    {
+      "id": "c_me_netflix",
+      "owner_id": "me",
+      "action": "watch",
+      "start": "20:00",
+      "end": "21:00",
+      "resource_ids": ["living_room_tv"],
+      "dependency_ids": [],
+      "status": "planned",
+      "meta": { "service": "Netflix", "content": "Traitors 2" }
+    },
+    {
+      "id": "c_sister_prime",
+      "owner_id": "sister",
+      "action": "watch",
+      "start": "20:00",
+      "end": "21:00",
+      "resource_ids": ["living_room_tv"],
+      "dependency_ids": [],
+      "status": "planned",
+      "meta": { "service": "Prime Video", "content": "Traitors 1" }
+    }
+  ],
+  "dependencies": [],
+  "constraints": [
+    {
+      "id": "con_one_tv",
+      "description": "Only one show can use the living room TV at a time",
+      "commitment_id": null,
+      "expression": "exclusive(living_room_tv)"
+    }
+  ],
+  "events": []
+}

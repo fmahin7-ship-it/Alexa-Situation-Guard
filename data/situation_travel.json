@@ -1,0 +1,97 @@
+{
+  "id": "travel_friday",
+  "name": "Friday airport trip",
+  "people": [
+    { "id": "me", "name": "Me" },
+    { "id": "dad", "name": "Dad" }
+  ],
+  "goals": [
+    {
+      "id": "goal_flight",
+      "description": "Dad boards the 18:00 flight",
+      "owner_id": "me"
+    }
+  ],
+  "resources": [
+    {
+      "id": "train_line",
+      "type": "train",
+      "name": "City to Airport train",
+      "availability": "scheduled"
+    },
+    {
+      "id": "airport_terminal",
+      "type": "location",
+      "name": "Airport terminal",
+      "availability": null
+    }
+  ],
+  "commitments": [
+    {
+      "id": "c_train",
+      "owner_id": "me",
+      "action": "take_train",
+      "start": "15:00",
+      "end": "15:45",
+      "resource_ids": ["train_line"],
+      "dependency_ids": [],
+      "status": "planned",
+      "meta": { "planned_arrival": "15:30" }
+    },
+    {
+      "id": "c_airport_arrive",
+      "owner_id": "me",
+      "action": "arrive_airport",
+      "start": "16:00",
+      "end": "16:00",
+      "resource_ids": ["airport_terminal"],
+      "dependency_ids": ["dep_airport_needs_train"],
+      "status": "planned",
+      "meta": {}
+    },
+    {
+      "id": "c_flight",
+      "owner_id": "dad",
+      "action": "board_flight",
+      "start": "18:00",
+      "end": "18:00",
+      "resource_ids": ["airport_terminal"],
+      "dependency_ids": ["dep_flight_needs_airport"],
+      "status": "planned",
+      "meta": { "flight": "QF123" }
+    }
+  ],
+  "dependencies": [
+    {
+      "id": "dep_airport_needs_train",
+      "from_id": "c_airport_arrive",
+      "to_id": "c_train",
+      "kind": "requires"
+    },
+    {
+      "id": "dep_flight_needs_airport",
+      "from_id": "c_flight",
+      "to_id": "c_airport_arrive",
+      "kind": "requires"
+    }
+  ],
+  "constraints": [
+    {
+      "id": "con_arrive_before_flight",
+      "description": "Must be at airport by 16:00 for 18:00 flight",
+      "commitment_id": "c_airport_arrive",
+      "before": "16:00",
+      "expression": null
+    }
+  ],
+  "events": [
+    {
+      "id": "ev_train_ok",
+      "type": "status",
+      "description": "Train currently on time",
+      "at": "14:00",
+      "related_ids": ["c_train"],
+      "meta": { "delay_minutes": 0 }
+    }
+  ]
+}

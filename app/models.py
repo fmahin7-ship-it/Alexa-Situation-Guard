@@ -22,6 +22,10 @@ class Resource(BaseModel):
     id: str
     type: str = Field(..., description="tv | car | room | train | device | restaurant | ...")
     name: str
+    capacity: Optional[int] = Field(
+        None,
+        description="Max concurrent uses; None = unknown, skip capacity checks",
+    )
     availability: Optional[str] = None
 
 

@@ -2,12 +2,14 @@
 
 2.1 Dependency (requires): prerequisite end <= dependent start
 2.2 Time (optional): commitment start <= end; deadline before when present
+2.3 Resource (optional): concurrency on a resource exceeds capacity
 """
 
 from __future__ import annotations
 
 from datetime import datetime
-from typing import Dict, List, Optional, Set, Tuple
+from enum import Enum
+from typing import Dict, List, NamedTuple, Optional, Set, Tuple
 
 from pydantic import BaseModel, Field
 
@@ -21,6 +23,20 @@ class FeasibilityResult(BaseModel):
     broken_commitment_ids: List[str] = Field(default_factory=list)
     unevaluated_dependency_ids: List[str] = Field(default_factory=list)
     unevaluated_constraint_ids: List[str] = Field(default_factory=list)
+    unevaluated_resource_ids: List[str] = Field(default_factory=list)
+
+
+class WindowStatus(str, Enum):
+    VALID = "valid"
+    MISSING = "missing"  # start or end absent
+    INVALID = "invalid"  # present but unparseable
+    IMPOSSIBLE = "impossible"  # start > end (owned by Step 2.2)
+
+
+class WindowResult(NamedTuple):
+    status: WindowStatus
+    start: Optional[datetime] = None
+    end: Optional[datetime] = None
 
 
 def _parse_moment(value: Optional[str]) -> Optional[datetime]:
@@ -37,6 +53,19 @@ def _parse_moment(value: Optional[str]) -> Optional[datetime]:
         except ValueError:
             continue
     return None
+
+
+def _window(commitment: Commitment) -> WindowResult:
+    """Classify a commitment's time window once — callers branch on status."""
+    if not commitment.start or not commitment.end:
+        return WindowResult(WindowStatus.MISSING)
+    start = _parse_moment(commitment.start)
+    end = _parse_moment(commitment.end)
+    if start is None or end is None:
+        return WindowResult(WindowStatus.INVALID)
+    if start > end:
+        return WindowResult(WindowStatus.IMPOSSIBLE, start, end)
+    return WindowResult(WindowStatus.VALID, start, end)
 
 
 def _commitment_map(situation: Situation) -> Dict[str, Commitment]:
@@ -74,28 +103,22 @@ def _dependency_time_ok(
 
 
 def _self_time_ok(commitment: Commitment) -> Tuple[Optional[bool], str]:
-    """If both start and end exist: require start <= end. Otherwise skip."""
-    if not commitment.start or not commitment.end:
+    window = _window(commitment)
+    if window.status is WindowStatus.MISSING:
         return None, f"Skip self-time check for '{commitment.id}' (missing start or end)"
-
-    start = _parse_moment(commitment.start)
-    end = _parse_moment(commitment.end)
-    if start is None or end is None:
+    if window.status is WindowStatus.INVALID:
         return None, f"Cannot parse times for '{commitment.id}'"
-
-    if start <= end:
-        return True, f"'{commitment.id}' window {commitment.start}-{commitment.end} is valid"
-
-    return False, (
-        f"'{commitment.id}' has impossible window: "
-        f"start {commitment.start} is after end {commitment.end}"
-    )
+    if window.status is WindowStatus.IMPOSSIBLE:
+        return False, (
+            f"'{commitment.id}' has impossible window: "
+            f"start {commitment.start} is after end {commitment.end}"
+        )
+    return True, f"'{commitment.id}' window {commitment.start}-{commitment.end} is valid"
 
 
 def _deadline_ok(
     commitment: Commitment, constraint: Constraint
 ) -> Tuple[Optional[bool], str]:
-    """If constraint has before + commitment_id: commitment finish <= before."""
     if not constraint.before or not constraint.commitment_id:
         return None, f"Skip deadline for '{constraint.id}' (no before/commitment_id)"
 
@@ -119,6 +142,94 @@ def _deadline_ok(
         f"'{commitment.id}' finishes at {finish_raw}, "
         f"after deadline {constraint.before} ({constraint.description})"
     )
+
+
+def _max_concurrency(
+    timed: List[Tuple[Commitment, Tuple[datetime, datetime]]]
+) -> Tuple[int, List[Commitment]]:
+    """
+    Sweep-line: max concurrent count and commitments active at that peak.
+    At the same timestamp, process ends (-1) before starts (+1) so abutting
+    windows do not count as overlapping.
+    """
+    if not timed:
+        return 0, []
+
+    events: List[Tuple[datetime, int, Commitment]] = []
+    for commitment, (start, end) in timed:
+        events.append((start, 1, commitment))
+        events.append((end, -1, commitment))
+
+    events.sort(key=lambda e: (e[0], e[1]))
+
+    current: Set[str] = set()
+    active: Dict[str, Commitment] = {}
+    max_count = 0
+    peak_ids: Set[str] = set()
+
+    for _, delta, commitment in events:
+        if delta == 1:
+            current.add(commitment.id)
+            active[commitment.id] = commitment
+            if len(current) > max_count:
+                max_count = len(current)
+                peak_ids = set(current)
+        else:
+            current.discard(commitment.id)
+
+    peak = [active[i] for i in peak_ids if i in active]
+    return max_count, peak
+
+
+def _check_resources(
+    situation: Situation,
+    reasons: List[str],
+    broken: Set[str],
+    unevaluated_resources: List[str],
+) -> None:
+    for resource in situation.resources:
+        if resource.capacity is None:
+            continue  # unknown — do not invent conflicts
+
+        users = [c for c in situation.commitments if resource.id in c.resource_ids]
+        timed: List[Tuple[Commitment, Tuple[datetime, datetime]]] = []
+        missing_time = False
+        for commitment in users:
+            window = _window(commitment)
+            if window.status is WindowStatus.VALID:
+                assert window.start is not None and window.end is not None
+                timed.append((commitment, (window.start, window.end)))
+            elif window.status is WindowStatus.IMPOSSIBLE:
+                continue  # Step 2.2 already owns this
+            else:
+                missing_time = True
+
+        if missing_time and timed:
+            unevaluated_resources.append(resource.id)
+            reasons.append(
+                f"Resource '{resource.id}' has capacity={resource.capacity} but some "
+                f"commitments lack parseable start/end — evaluated only timed users"
+            )
+        elif missing_time and not timed:
+            unevaluated_resources.append(resource.id)
+            reasons.append(
+                f"Resource '{resource.id}' capacity={resource.capacity} but no timed "
+                f"commitments to evaluate — skipped"
+            )
+            continue
+
+        if len(timed) <= resource.capacity:
+            continue
+
+        concurrent, peak = _max_concurrency(timed)
+        if concurrent > resource.capacity:
+            for c in peak:
+                broken.add(c.id)
+            ids = ", ".join(sorted(c.id for c in peak))
+            reasons.append(
+                f"Resource '{resource.id}' ({resource.name}) capacity={resource.capacity} "
+                f"but {concurrent} commitments overlap ({ids})"
+            )
 
 
 def _goals_affected_by(
@@ -166,7 +277,7 @@ def _check_self_times(
     for commitment in situation.commitments:
         ok, detail = _self_time_ok(commitment)
         if ok is None:
-            continue  # no time dimension — skip silently
+            continue
         if ok is False:
             broken.add(commitment.id)
             reasons.append(detail)
@@ -181,7 +292,7 @@ def _check_deadlines(
 ) -> None:
     for constraint in situation.constraints:
         if not constraint.before or not constraint.commitment_id:
-            continue  # no deadline dimension on this constraint
+            continue
 
         commitment = commitments.get(constraint.commitment_id)
         if commitment is None:
@@ -206,27 +317,31 @@ def evaluate_situation(situation: Situation) -> FeasibilityResult:
     """
     Evaluate whether the current situation is feasible.
 
-    Dimensions are optional:
-    - dependencies evaluated when present
-    - time/deadlines evaluated only when times / before are present
+    Optional dimensions:
+    - dependencies when present
+    - time/deadlines when times / before present
+    - resources when capacity is set (None = unknown, skip)
     """
     commitments = _commitment_map(situation)
     reasons: List[str] = []
     broken: Set[str] = set()
     unevaluated_deps: List[str] = []
     unevaluated_constraints: List[str] = []
+    unevaluated_resources: List[str] = []
 
     _check_dependencies(situation, commitments, reasons, broken, unevaluated_deps)
     _check_self_times(situation, reasons, broken)
     _check_deadlines(situation, commitments, reasons, broken, unevaluated_constraints)
+    _check_resources(situation, reasons, broken, unevaluated_resources)
 
     feasible = len(broken) == 0
     affected = _goals_affected_by(situation, broken)
 
-    # Drop silent "skip" noise; keep real evaluation notes
     reasons = [r for r in reasons if not r.startswith("Skip ")]
     if feasible and not reasons:
-        reasons.append("Situation passes evaluated dependency and time checks.")
+        reasons.append(
+            "Situation passes evaluated dependency, time, and resource checks."
+        )
 
     return FeasibilityResult(
         feasible=feasible,
@@ -235,4 +350,5 @@ def evaluate_situation(situation: Situation) -> FeasibilityResult:
         broken_commitment_ids=sorted(broken),
         unevaluated_dependency_ids=unevaluated_deps,
         unevaluated_constraint_ids=unevaluated_constraints,
+        unevaluated_resource_ids=unevaluated_resources,
     )

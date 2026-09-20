@@ -17,7 +17,8 @@
       "id": "living_room_tv",
       "type": "tv",
       "name": "Living room TV",
-      "availability": "shared"
+      "capacity": 1,
+      "availability": null
     }
   ],
   "commitments": [
@@ -45,13 +46,6 @@
     }
   ],
   "dependencies": [],
-  "constraints": [
-    {
-      "id": "con_one_tv",
-      "description": "Only one show can use the living room TV at a time",
-      "commitment_id": null,
-      "expression": "exclusive(living_room_tv)"
-    }
-  ],
+  "constraints": [],
   "events": []
 }

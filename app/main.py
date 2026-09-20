@@ -1,4 +1,4 @@
-"""Situation State + Step 2.1 dependency feasibility API."""
+"""Situation State + Step 2 feasibility API (deps, time, resources)."""
 
 from __future__ import annotations
 
@@ -8,15 +8,15 @@ from .engine import describe_situation, list_situation_ids, load_all_situations,
 from .feasibility import FeasibilityResult, evaluate_situation
 from .models import Situation
 
-app = FastAPI(title="Commitment Graph — Step 2.2 (Feasibility)")
+app = FastAPI(title="Commitment Graph — Step 2.3 (Feasibility)")
 
 
 @app.get("/health")
 def health():
     return {
         "status": "ok",
-        "step": "2.2",
-        "focus": "dependency_and_optional_time_feasibility",
+        "step": "2.3",
+        "focus": "dependency_time_and_resource_feasibility",
     }
 
 

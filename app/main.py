@@ -54,7 +54,10 @@ def get_feasibility(situation_id: str):
         situation = load_situation(situation_id)
     except KeyError as exc:
         raise HTTPException(status_code=404, detail=str(exc)) from exc
-    return evaluate_situation(situation)
+    try:
+        return evaluate_situation(situation)
+    except ValueError as exc:
+        raise HTTPException(status_code=422, detail=str(exc)) from exc
 
 
 @app.post("/situations/{situation_id}/impact", response_model=ImpactResult)
@@ -63,4 +66,7 @@ def post_impact(situation_id: str, event: Event):
         situation = load_situation(situation_id)
     except KeyError as exc:
         raise HTTPException(status_code=404, detail=str(exc)) from exc
-    return evaluate_impact(situation, event)
+    try:
+        return evaluate_impact(situation, event)
+    except ValueError as exc:
+        raise HTTPException(status_code=422, detail=str(exc)) from exc

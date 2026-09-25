@@ -45,11 +45,15 @@ def load_all_situations() -> Dict[str, Situation]:
 
 def describe_situation(situation: Situation) -> str:
     """Human-readable snapshot of current state (representation only)."""
-    lines = [
-        f"Situation: {situation.name} ({situation.id})",
-        f"People: {', '.join(p.name for p in situation.people) or '-'}",
-        "Goals:",
-    ]
+    lines = [f"Situation: {situation.name} ({situation.id})"]
+    if situation.timezone:
+        lines.append(f"Timezone: {situation.timezone}")
+    lines.append(f"People: {', '.join(p.name for p in situation.people) or '-'}")
+    if situation.locations:
+        lines.append("Locations:")
+        for loc in situation.locations:
+            lines.append(f"  - [{loc.id}] {loc.name}")
+    lines.append("Goals:")
     for g in situation.goals:
         lines.append(f"  - {g.description}")
     lines.append("Commitments:")

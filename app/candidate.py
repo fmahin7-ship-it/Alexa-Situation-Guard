@@ -4,7 +4,9 @@ A Candidate is a proposed recovery: a list of structured edits to a Situation.
 The proposer (later an LLM) only suggests edits; the feasibility engine decides.
 
 Edits are applied in order to a copy — the real Situation is never touched.
-A candidate whose edits cannot be applied is malformed, not infeasible.
+A candidate whose edits cannot be applied, or that leaves the situation
+structurally broken (mixed time forms, wrong offsets, unknown locations),
+is malformed, not infeasible.
 """
 
 from __future__ import annotations
@@ -13,7 +15,7 @@ from typing import Annotated, List, Literal, Optional, Tuple, Union
 
 from pydantic import BaseModel, Field
 
-from .feasibility import evaluate_situation
+from .feasibility import evaluate_situation, situation_errors
 from .models import Commitment, Dependency, Situation
 
 
@@ -139,6 +141,8 @@ def simulate(situation: Situation, candidate: Candidate) -> SimulationResult:
         )
 
     updated, errors = apply_edits(situation, candidate.edits)
+    if not errors:
+        errors = situation_errors(updated)
     if errors:
         return SimulationResult(
             candidate_id=candidate.id,

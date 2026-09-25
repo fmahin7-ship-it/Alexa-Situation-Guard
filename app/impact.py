@@ -10,6 +10,7 @@ from __future__ import annotations
 
 from datetime import timedelta
 from typing import Dict, List, Optional, Set
+from zoneinfo import ZoneInfo
 
 from pydantic import BaseModel, Field
 
@@ -39,13 +40,19 @@ def _detect_format(value: str) -> str:
     return "%Y-%m-%dT%H:%M"
 
 
-def _shift_moment(value: Optional[str], minutes: int) -> Optional[str]:
+def _shift_moment(
+    value: Optional[str], minutes: int, zone: Optional[ZoneInfo] = None
+) -> Optional[str]:
     if not value:
         return value
     dt = _parse_moment(value)
     if dt is None:
         return value
     shifted = dt + timedelta(minutes=minutes)
+    if shifted.tzinfo is not None:
+        if zone is not None:
+            shifted = shifted.astimezone(zone)
+        return shifted.isoformat()
     return shifted.strftime(_detect_format(value))
 
 
@@ -81,6 +88,7 @@ def apply_event(situation: Situation, event: Event) -> tuple[Situation, List[str
 
     commitments = _commitment_map(updated)
     changed: List[str] = []
+    zone = ZoneInfo(updated.timezone) if updated.timezone else None
 
     for related_id in event.related_ids:
         commitment = commitments.get(related_id)
@@ -92,9 +100,9 @@ def apply_event(situation: Situation, event: Event) -> tuple[Situation, List[str
 
         before_start, before_end = commitment.start, commitment.end
         if commitment.start:
-            commitment.start = _shift_moment(commitment.start, delay)
+            commitment.start = _shift_moment(commitment.start, delay, zone)
         if commitment.end:
-            commitment.end = _shift_moment(commitment.end, delay)
+            commitment.end = _shift_moment(commitment.end, delay, zone)
 
         if commitment.start != before_start or commitment.end != before_end or delay == 0:
             # delay==0 still counts as applied to a known related commitment

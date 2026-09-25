@@ -1,6 +1,7 @@
 {
   "id": "travel_friday",
   "name": "Friday airport trip",
+  "timezone": "Australia/Sydney",
   "people": [
     { "id": "me", "name": "Me" },
     { "id": "dad", "name": "Dad" }
@@ -10,6 +11,22 @@
       "id": "goal_flight",
       "description": "Dad boards the 18:00 flight",
       "owner_id": "me"
+    }
+  ],
+  "locations": [
+    {
+      "id": "loc_central",
+      "name": "Central Station",
+      "address": "Eddy Ave, Haymarket NSW 2000",
+      "latitude": -33.8830,
+      "longitude": 151.2063
+    },
+    {
+      "id": "loc_airport_t1",
+      "name": "Sydney Airport International Terminal (T1)",
+      "address": "Mascot NSW 2020",
+      "latitude": -33.9361,
+      "longitude": 151.1664
     }
   ],
   "resources": [
@@ -31,19 +48,22 @@
       "id": "c_train",
       "owner_id": "me",
       "action": "take_train",
-      "start": "15:00",
-      "end": "15:45",
+      "start": "2026-10-02T15:00:00+10:00",
+      "end": "2026-10-02T15:45:00+10:00",
+      "origin_id": "loc_central",
+      "destination_id": "loc_airport_t1",
       "resource_ids": ["train_line"],
       "dependency_ids": [],
       "status": "planned",
-      "meta": { "planned_arrival": "15:30" }
+      "meta": {}
     },
     {
       "id": "c_airport_arrive",
       "owner_id": "me",
       "action": "arrive_airport",
-      "start": "16:00",
-      "end": "16:00",
+      "start": "2026-10-02T16:00:00+10:00",
+      "end": "2026-10-02T16:00:00+10:00",
+      "location_id": "loc_airport_t1",
       "resource_ids": ["airport_terminal"],
       "dependency_ids": ["dep_airport_needs_train"],
       "status": "planned",
@@ -53,8 +73,9 @@
       "id": "c_flight",
       "owner_id": "dad",
       "action": "board_flight",
-      "start": "18:00",
-      "end": "18:00",
+      "start": "2026-10-02T18:00:00+10:00",
+      "end": "2026-10-02T18:00:00+10:00",
+      "location_id": "loc_airport_t1",
       "resource_ids": ["airport_terminal"],
       "dependency_ids": ["dep_flight_needs_airport"],
       "status": "planned",
@@ -80,7 +101,7 @@
       "id": "con_arrive_before_flight",
       "description": "Must be at airport by 16:00 for 18:00 flight",
       "commitment_id": "c_airport_arrive",
-      "before": "16:00",
+      "before": "2026-10-02T16:00:00+10:00",
       "expression": null
     }
   ],
@@ -89,7 +110,7 @@
       "id": "ev_train_ok",
       "type": "status",
       "description": "Train currently on time",
-      "at": "14:00",
+      "at": "2026-10-02T14:00:00+10:00",
       "related_ids": ["c_train"],
       "meta": { "delay_minutes": 0 }
     }

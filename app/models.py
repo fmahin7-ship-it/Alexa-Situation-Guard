@@ -18,6 +18,16 @@ class Goal(BaseModel):
     owner_id: Optional[str] = None
 
 
+class Location(BaseModel):
+    """A place commitments start, end, or happen at. Coordinates are optional."""
+
+    id: str
+    name: str
+    address: Optional[str] = None
+    latitude: Optional[float] = None
+    longitude: Optional[float] = None
+
+
 class Resource(BaseModel):
     id: str
     type: str = Field(..., description="tv | car | room | train | device | restaurant | ...")
@@ -35,8 +45,13 @@ class Commitment(BaseModel):
     id: str
     owner_id: str
     action: str
-    start: Optional[str] = Field(None, description="HH:MM or ISO datetime")
+    start: Optional[str] = Field(
+        None, description="HH:MM, YYYY-MM-DD, or ISO datetime (with offset when the situation has a timezone)"
+    )
     end: Optional[str] = None
+    origin_id: Optional[str] = Field(None, description="Location id a journey starts from")
+    destination_id: Optional[str] = Field(None, description="Location id a journey ends at")
+    location_id: Optional[str] = Field(None, description="Location id for something at one place")
     resource_ids: List[str] = Field(default_factory=list)
     dependency_ids: List[str] = Field(default_factory=list)
     status: str = "planned"
@@ -60,7 +75,7 @@ class Constraint(BaseModel):
         None, description="Deadline moment — commitment must finish at or before this"
     )
     expression: Optional[str] = Field(
-        None, description="Future general constraints; not evaluated in Step 2.2"
+        None, description="Future general constraints; not evaluated yet"
     )
 
 
@@ -80,7 +95,12 @@ class Situation(BaseModel):
 
     id: str
     name: str
+    timezone: Optional[str] = Field(
+        None,
+        description="IANA zone, e.g. Australia/Sydney. When set, every time must carry a matching offset",
+    )
     people: List[Person] = Field(default_factory=list)
+    locations: List[Location] = Field(default_factory=list)
     goals: List[Goal] = Field(default_factory=list)
     commitments: List[Commitment] = Field(default_factory=list)
     resources: List[Resource] = Field(default_factory=list)

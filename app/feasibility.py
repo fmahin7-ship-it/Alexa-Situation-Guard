@@ -3,6 +3,9 @@
 2.1 Dependency (requires): prerequisite end <= dependent start
 2.2 Time (optional): commitment start <= end; deadline before when present
 2.3 Resource (optional): concurrency on a resource exceeds capacity
+
+Times are compared as given. A situation uses one time form throughout; with a
+timezone set, every time carries the offset that zone has at that moment.
 """
 
 from __future__ import annotations
@@ -10,6 +13,7 @@ from __future__ import annotations
 from datetime import datetime
 from enum import Enum
 from typing import Dict, List, NamedTuple, Optional, Set, Tuple
+from zoneinfo import ZoneInfo, ZoneInfoNotFoundError
 
 from pydantic import BaseModel, Field
 
@@ -40,7 +44,7 @@ class WindowResult(NamedTuple):
 
 
 def _parse_moment(value: Optional[str]) -> Optional[datetime]:
-    """Parse HH:MM, YYYY-MM-DD, or ISO datetime into a comparable datetime."""
+    """Parse HH:MM, YYYY-MM-DD, or ISO datetime (optionally with offset)."""
     if not value:
         return None
     value = value.strip()
@@ -52,7 +56,82 @@ def _parse_moment(value: Optional[str]) -> Optional[datetime]:
             return dt
         except ValueError:
             continue
-    return None
+    try:
+        return datetime.fromisoformat(value)
+    except ValueError:
+        return None
+
+
+def _situation_moments(situation: Situation) -> List[Tuple[str, str, datetime]]:
+    """(owner id, raw value, parsed) for every parseable time the engine compares."""
+    moments: List[Tuple[str, str, datetime]] = []
+    for c in situation.commitments:
+        for raw in (c.start, c.end):
+            dt = _parse_moment(raw)
+            if dt is not None:
+                moments.append((c.id, raw, dt))
+    for constraint in situation.constraints:
+        dt = _parse_moment(constraint.before)
+        if dt is not None:
+            moments.append((constraint.id, constraint.before, dt))
+    return moments
+
+
+def time_form_errors(situation: Situation) -> List[str]:
+    """
+    Times with and without offsets cannot be compared. A situation must use one form;
+    with a timezone set, every time needs the offset that zone has at that moment.
+    """
+    moments = _situation_moments(situation)
+    with_offset = sorted({owner for owner, _, dt in moments if dt.tzinfo is not None})
+    without_offset = sorted({owner for owner, _, dt in moments if dt.tzinfo is None})
+
+    if situation.timezone:
+        errors: List[str] = []
+        try:
+            zone = ZoneInfo(situation.timezone)
+        except (ZoneInfoNotFoundError, ValueError):
+            return [f"Unknown timezone '{situation.timezone}'"]
+        if without_offset:
+            errors.append(
+                f"Situation timezone is {situation.timezone} but these times have no "
+                f"offset: {', '.join(without_offset)}"
+            )
+        for owner, raw, dt in moments:
+            if dt.tzinfo is None:
+                continue
+            expected = dt.astimezone(zone).utcoffset()
+            if dt.utcoffset() != expected:
+                message = (
+                    f"'{owner}' time {raw} has offset {dt.utcoffset()} but "
+                    f"{situation.timezone} is {expected} at that moment"
+                )
+                if message not in errors:
+                    errors.append(message)
+        return errors
+
+    if with_offset and without_offset:
+        return [
+            "Situation mixes times with an offset "
+            f"({', '.join(with_offset)}) and without ({', '.join(without_offset)})"
+        ]
+    return []
+
+
+def location_reference_errors(situation: Situation) -> List[str]:
+    known = {loc.id for loc in situation.locations}
+    errors: List[str] = []
+    for c in situation.commitments:
+        for field in ("origin_id", "destination_id", "location_id"):
+            ref = getattr(c, field)
+            if ref is not None and ref not in known:
+                errors.append(f"'{c.id}' {field} references unknown location '{ref}'")
+    return errors
+
+
+def situation_errors(situation: Situation) -> List[str]:
+    """Structural problems that make a situation unfit to evaluate."""
+    return time_form_errors(situation) + location_reference_errors(situation)
 
 
 def _window(commitment: Commitment) -> WindowResult:
@@ -321,7 +400,13 @@ def evaluate_situation(situation: Situation) -> FeasibilityResult:
     - dependencies when present
     - time/deadlines when times / before present
     - resources when capacity is set (None = unknown, skip)
+
+    Raises ValueError when times cannot be compared (see time_form_errors).
     """
+    form_errors = time_form_errors(situation)
+    if form_errors:
+        raise ValueError("; ".join(form_errors))
+
     commitments = _commitment_map(situation)
     reasons: List[str] = []
     broken: Set[str] = set()

@@ -1,4 +1,4 @@
-"""CLI: feasibility checks, travel delay impact, candidate simulation, and the recovery loop.
+"""CLI: feasibility, travel delay impact, candidate simulation, recovery loop, and time/location rules.
 
   python -m app.check
 """
@@ -15,7 +15,7 @@ from .candidate import (
     simulate,
 )
 from .engine import describe_situation, list_situation_ids, load_all_situations
-from .feasibility import evaluate_situation
+from .feasibility import evaluate_situation, time_form_errors
 from .impact import apply_event, evaluate_impact
 from .models import Commitment, Dependency, Event, Situation
 from .recovery import RecoveryResult, ScriptedProposer, recover
@@ -118,11 +118,16 @@ def _print_recovery(label: str, outcome: RecoveryResult) -> None:
     print()
 
 
+def _trip(hhmm: str) -> str:
+    """A time on the travel_friday trip date, in Sydney before daylight saving."""
+    return f"2026-10-02T{hhmm}:00+10:00"
+
+
 def _travel_recovery_candidates() -> list:
     earlier_train = Candidate(
         id="cand_earlier_train",
         rationale="Take an earlier train that arrives well before 16:00",
-        edits=[UpdateCommitment(commitment_id="c_train", start="14:15", end="15:00")],
+        edits=[UpdateCommitment(commitment_id="c_train", start=_trip("14:15"), end=_trip("15:00"))],
         assumptions=["A 14:15 train to the airport exists"],
     )
     taxi = Candidate(
@@ -134,8 +139,10 @@ def _travel_recovery_candidates() -> list:
                     id="c_taxi",
                     owner_id="me",
                     action="take_taxi",
-                    start="15:20",
-                    end="15:50",
+                    start=_trip("15:20"),
+                    end=_trip("15:50"),
+                    origin_id="loc_central",
+                    destination_id="loc_airport_t1",
                 )
             ),
             UpdateCommitment(commitment_id="c_train", status="cancelled"),
@@ -154,7 +161,9 @@ def _travel_recovery_candidates() -> list:
         id="cand_later_arrival",
         rationale="Keep the delayed train and arrive at the airport at 16:30",
         edits=[
-            UpdateCommitment(commitment_id="c_airport_arrive", start="16:30", end="16:30")
+            UpdateCommitment(
+                commitment_id="c_airport_arrive", start=_trip("16:30"), end=_trip("16:30")
+            )
         ],
     )
     return [earlier_train, taxi, later_arrival]
@@ -253,7 +262,7 @@ def main() -> None:
         id="ev_train_delay_45",
         type="train_delay",
         description="Train delayed by 45 minutes",
-        at="14:30",
+        at=_trip("14:30"),
         related_ids=["c_train"],
         meta={"delay_minutes": 45},
     )
@@ -311,7 +320,9 @@ def main() -> None:
     malformed = Candidate(
         id="cand_malformed",
         rationale="Edit a commitment that does not exist",
-        edits=[UpdateCommitment(commitment_id="c_helicopter", start="15:00", end="15:10")],
+        edits=[
+            UpdateCommitment(commitment_id="c_helicopter", start=_trip("15:00"), end=_trip("15:10"))
+        ],
     )
     malformed_result = simulate(delayed, malformed)
     _print_simulation(malformed, malformed_result)
@@ -332,7 +343,9 @@ def main() -> None:
         id="cand_later_arrival_1615",
         rationale="Keep the delayed train and arrive at the airport at 16:15",
         edits=[
-            UpdateCommitment(commitment_id="c_airport_arrive", start="16:15", end="16:15")
+            UpdateCommitment(
+                commitment_id="c_airport_arrive", start=_trip("16:15"), end=_trip("16:15")
+            )
         ],
     )
 
@@ -358,7 +371,7 @@ def main() -> None:
     bad_train_time = Candidate(
         id="cand_bad_train_time",
         rationale="Retime the train with a mistaken window",
-        edits=[UpdateCommitment(commitment_id="c_train", start="15:00", end="14:30")],
+        edits=[UpdateCommitment(commitment_id="c_train", start=_trip("15:00"), end=_trip("14:30"))],
     )
     proposer = ScriptedProposer(
         [bad_train_time, by_id["cand_earlier_train"], by_id["cand_taxi"]]
@@ -407,6 +420,84 @@ def main() -> None:
         raise SystemExit("FAIL — recovery loop must not modify the real situation")
 
     print("RECOVERY LOOP OK — proposes, verifies, feeds back, and stops correctly.")
+    print()
+
+    print("=" * 60)
+    print("TIME AND LOCATION — offsets, daylight saving, location references")
+    print("=" * 60)
+
+    no_offset = Candidate(
+        id="cand_no_offset",
+        rationale="Retime the train using a bare clock time",
+        edits=[UpdateCommitment(commitment_id="c_train", start="14:15", end="15:00")],
+    )
+    result = simulate(delayed, no_offset)
+    _print_simulation(no_offset, result)
+    if result.applied or "no offset" not in " ".join(result.reasons):
+        raise SystemExit("FAIL — a time without an offset should be rejected as malformed")
+
+    wrong_offset = Candidate(
+        id="cand_wrong_offset",
+        rationale="Move the flight to Monday but keep the pre-daylight-saving offset",
+        edits=[
+            UpdateCommitment(
+                commitment_id="c_flight",
+                start="2026-10-05T18:00:00+10:00",
+                end="2026-10-05T18:00:00+10:00",
+            )
+        ],
+    )
+    result = simulate(delayed, wrong_offset)
+    _print_simulation(wrong_offset, result)
+    if result.applied or "Australia/Sydney" not in " ".join(result.reasons):
+        raise SystemExit("FAIL — +10:00 on 5 October should be rejected (Sydney is +11:00)")
+
+    unknown_place = Candidate(
+        id="cand_unknown_place",
+        rationale="Take a taxi to a location the situation does not know",
+        edits=[
+            AddCommitment(
+                commitment=Commitment(
+                    id="c_taxi_elsewhere",
+                    owner_id="me",
+                    action="take_taxi",
+                    start=_trip("15:20"),
+                    end=_trip("15:50"),
+                    origin_id="loc_central",
+                    destination_id="loc_nowhere",
+                )
+            )
+        ],
+    )
+    result = simulate(delayed, unknown_place)
+    _print_simulation(unknown_place, result)
+    if result.applied or "loc_nowhere" not in " ".join(result.reasons):
+        raise SystemExit("FAIL — an unknown location should be rejected as malformed")
+
+    overnight = travel.model_copy(deep=True)
+    for c in overnight.commitments:
+        if c.id == "c_train":
+            c.start = "2026-10-04T01:00:00+10:00"
+            c.end = "2026-10-04T01:30:00+10:00"
+    shifted, _, _, _ = apply_event(overnight, delay_event.model_copy(update={"meta": {"delay_minutes": 60}}))
+    shifted_train = next(c for c in shifted.commitments if c.id == "c_train")
+    print(f"Train across daylight saving: {shifted_train.start} to {shifted_train.end}")
+    if shifted_train.end != "2026-10-04T03:30:00+11:00":
+        raise SystemExit("FAIL — 01:30+10:00 plus 60 min should become 03:30+11:00")
+    if time_form_errors(shifted):
+        raise SystemExit("FAIL — a shift across daylight saving should keep offsets valid")
+
+    mixed = all_situations["tv_evening"].model_copy(deep=True)
+    mixed.commitments[0].start = "2026-10-02T20:00:00+10:00"
+    try:
+        evaluate_situation(mixed)
+    except ValueError as exc:
+        print(f"Mixed time forms refused: {exc}")
+    else:
+        raise SystemExit("FAIL — mixed time forms should be refused, not compared")
+    print()
+
+    print("TIME AND LOCATION OK — offsets are enforced and daylight saving is respected.")
 
 
 if __name__ == "__main__":

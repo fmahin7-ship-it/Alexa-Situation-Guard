@@ -1,4 +1,4 @@
-"""CLI: Steps 1 + 2.1 + 2.2 + 2.3
+"""CLI: feasibility checks + travel delay impact.
 
   python -m app.check
 """
@@ -7,7 +7,8 @@ from __future__ import annotations
 
 from .engine import describe_situation, list_situation_ids, load_all_situations
 from .feasibility import evaluate_situation
-from .models import Situation
+from .impact import evaluate_impact
+from .models import Event, Situation
 
 
 def _print_result(situation: Situation) -> None:
@@ -165,7 +166,44 @@ def main() -> None:
     if "capacity=2" not in " ".join(crowded_result.reasons):
         raise SystemExit("FAIL — expected capacity=2 in resource reason")
 
-    print("STEP 2.3 OK — resource concurrency checks work without domain branches.")
+    print("=" * 60)
+    print("IMPACT — train delay 45 min on travel_friday")
+    print("=" * 60)
+    travel = all_situations["travel_friday"]
+    delay_event = Event(
+        id="ev_train_delay_45",
+        type="train_delay",
+        description="Train delayed by 45 minutes",
+        at="14:30",
+        related_ids=["c_train"],
+        meta={"delay_minutes": 45},
+    )
+    impact = evaluate_impact(travel, delay_event)
+    print(f"event_id={impact.event_id}")
+    print(f"applied={impact.applied} unevaluated={impact.unevaluated}")
+    print(f"changed_commitment_ids={impact.changed_commitment_ids}")
+    print(f"affected_commitment_ids={impact.affected_commitment_ids}")
+    print(f"feasibility_before={impact.feasibility_before}")
+    print(f"feasibility_after={impact.feasibility_after}")
+    print("reasons:")
+    for r in impact.reasons:
+        print(f"  - {r}")
+    print()
+
+    if impact.changed_commitment_ids != ["c_train"]:
+        raise SystemExit("FAIL — expected only c_train changed")
+    expected_affected = {"c_train", "c_airport_arrive", "c_flight"}
+    if set(impact.affected_commitment_ids) != expected_affected:
+        raise SystemExit(f"FAIL — expected affected {expected_affected}")
+    if not impact.feasibility_before:
+        raise SystemExit("FAIL — travel_friday should be feasible before delay")
+    if impact.feasibility_after:
+        raise SystemExit("FAIL — travel_friday should be infeasible after +45 delay")
+    joined = " ".join(impact.reasons)
+    if "c_airport_arrive" not in joined or "c_train" not in joined:
+        raise SystemExit("FAIL — expected dependency reason involving c_train / c_airport_arrive")
+
+    print("IMPACT OK — apply + blast radius + before/after feasibility.")
 
 
 if __name__ == "__main__":

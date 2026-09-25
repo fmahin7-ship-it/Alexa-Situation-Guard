@@ -1,4 +1,4 @@
-"""Situation State + Step 2 feasibility API (deps, time, resources)."""
+"""Situation State + feasibility + event impact API."""
 
 from __future__ import annotations
 
@@ -6,17 +6,17 @@ from fastapi import FastAPI, HTTPException
 
 from .engine import describe_situation, list_situation_ids, load_all_situations, load_situation
 from .feasibility import FeasibilityResult, evaluate_situation
-from .models import Situation
+from .impact import ImpactResult, evaluate_impact
+from .models import Event, Situation
 
-app = FastAPI(title="Commitment Graph — Step 2.3 (Feasibility)")
+app = FastAPI(title="Commitment Graph — Event Impact")
 
 
 @app.get("/health")
 def health():
     return {
         "status": "ok",
-        "step": "2.3",
-        "focus": "dependency_time_and_resource_feasibility",
+        "focus": "event_apply_impact_feasibility",
     }
 
 
@@ -55,3 +55,12 @@ def get_feasibility(situation_id: str):
     except KeyError as exc:
         raise HTTPException(status_code=404, detail=str(exc)) from exc
     return evaluate_situation(situation)
+
+
+@app.post("/situations/{situation_id}/impact", response_model=ImpactResult)
+def post_impact(situation_id: str, event: Event):
+    try:
+        situation = load_situation(situation_id)
+    except KeyError as exc:
+        raise HTTPException(status_code=404, detail=str(exc)) from exc
+    return evaluate_impact(situation, event)

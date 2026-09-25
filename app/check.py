@@ -1,4 +1,4 @@
-"""CLI: feasibility checks, travel delay impact, and recovery candidate simulation.
+"""CLI: feasibility checks, travel delay impact, candidate simulation, and the recovery loop.
 
   python -m app.check
 """
@@ -18,6 +18,7 @@ from .engine import describe_situation, list_situation_ids, load_all_situations
 from .feasibility import evaluate_situation
 from .impact import apply_event, evaluate_impact
 from .models import Commitment, Dependency, Event, Situation
+from .recovery import RecoveryResult, ScriptedProposer, recover
 
 
 def _print_result(situation: Situation) -> None:
@@ -101,6 +102,19 @@ def _print_simulation(candidate: Candidate, result: SimulationResult) -> None:
         print("assumptions:")
         for a in result.assumptions:
             print(f"  - {a}")
+    print()
+
+
+def _print_recovery(label: str, outcome: RecoveryResult) -> None:
+    print(f"Scenario: {label}")
+    print(f"solved={outcome.solved} stop_reason={outcome.stop_reason}")
+    for index, attempt in enumerate(outcome.attempts, start=1):
+        r = attempt.result
+        print(f"  attempt {index}: {attempt.candidate.id} applied={r.applied} feasible={r.feasible}")
+        for reason in r.reasons:
+            print(f"    - {reason}")
+    if outcome.chosen_candidate is not None:
+        print(f"chosen: {outcome.chosen_candidate.id} — {outcome.chosen_candidate.rationale}")
     print()
 
 
@@ -308,6 +322,91 @@ def main() -> None:
         raise SystemExit("FAIL — simulate must not modify the real situation")
 
     print("RECOVERY OK — candidates are verified on a copy; malformed edits are rejected.")
+    print()
+
+    print("=" * 60)
+    print("RECOVERY LOOP — scripted proposer on the delayed travel_friday")
+    print("=" * 60)
+    by_id = {c.id: c for c in _travel_recovery_candidates()}
+    later_arrival_1615 = Candidate(
+        id="cand_later_arrival_1615",
+        rationale="Keep the delayed train and arrive at the airport at 16:15",
+        edits=[
+            UpdateCommitment(commitment_id="c_airport_arrive", start="16:15", end="16:15")
+        ],
+    )
+
+    # Fail, react to feedback, then pass
+    proposer = ScriptedProposer(
+        [by_id["cand_later_arrival"], later_arrival_1615, by_id["cand_taxi"], by_id["cand_earlier_train"]]
+    )
+    outcome = recover(delayed, proposer, max_attempts=3)
+    _print_recovery("fail, then feedback, then pass", outcome)
+    if not outcome.solved or outcome.stop_reason != "found_feasible":
+        raise SystemExit("FAIL — loop should find a feasible candidate")
+    if [a.candidate.id for a in outcome.attempts] != ["cand_later_arrival", "cand_taxi"]:
+        raise SystemExit("FAIL — expected later arrival to fail, then taxi to pass")
+    if outcome.chosen_candidate is None or outcome.chosen_candidate.id != "cand_taxi":
+        raise SystemExit("FAIL — expected taxi to be chosen")
+    if proposer.skipped_ids != ["cand_later_arrival_1615"]:
+        raise SystemExit("FAIL — proposer should skip the other edit to the broken arrival")
+    second_call_history = proposer.received_histories[1]
+    if len(second_call_history) != 1 or second_call_history[0].result.feasible is not False:
+        raise SystemExit("FAIL — proposer should receive the first failure as feedback")
+
+    # A broken c_train blocks retiming it again, but not cancelling it and routing around it
+    bad_train_time = Candidate(
+        id="cand_bad_train_time",
+        rationale="Retime the train with a mistaken window",
+        edits=[UpdateCommitment(commitment_id="c_train", start="15:00", end="14:30")],
+    )
+    proposer = ScriptedProposer(
+        [bad_train_time, by_id["cand_earlier_train"], by_id["cand_taxi"]]
+    )
+    outcome = recover(delayed, proposer, max_attempts=3)
+    _print_recovery("broken train, then taxi still tried", outcome)
+    if outcome.attempts[0].result.broken_commitment_ids != ["c_train"]:
+        raise SystemExit("FAIL — mistaken window should mark c_train broken")
+    if proposer.skipped_ids != ["cand_earlier_train"]:
+        raise SystemExit("FAIL — only the candidate that retimes c_train should be skipped")
+    if outcome.chosen_candidate is None or outcome.chosen_candidate.id != "cand_taxi":
+        raise SystemExit("FAIL — taxi cancels c_train rather than retiming it, so it must be tried")
+
+    # Every attempt fails until the limit
+    outcome = recover(
+        delayed,
+        ScriptedProposer([by_id["cand_later_arrival"], by_id["cand_taxi"]]),
+        max_attempts=1,
+    )
+    _print_recovery("max attempts reached", outcome)
+    if outcome.solved or outcome.stop_reason != "max_attempts" or len(outcome.attempts) != 1:
+        raise SystemExit("FAIL — loop should stop at max_attempts")
+
+    # Proposer runs out of ideas
+    outcome = recover(delayed, ScriptedProposer([by_id["cand_later_arrival"]]), max_attempts=3)
+    _print_recovery("proposer out of candidates", outcome)
+    if outcome.solved or outcome.stop_reason != "no_more_candidates":
+        raise SystemExit("FAIL — loop should stop when the proposer has nothing left")
+
+    # Nothing to recover
+    untouched = ScriptedProposer([by_id["cand_taxi"]])
+    outcome = recover(travel, untouched, max_attempts=3)
+    _print_recovery("already feasible", outcome)
+    if outcome.stop_reason != "already_feasible" or outcome.attempts:
+        raise SystemExit("FAIL — feasible situation should not trigger proposals")
+    if untouched.received_histories:
+        raise SystemExit("FAIL — proposer should not be called for a feasible situation")
+
+    # Malformed candidate is a failed attempt; the loop continues
+    outcome = recover(delayed, ScriptedProposer([malformed, by_id["cand_taxi"]]), max_attempts=3)
+    _print_recovery("malformed, then pass", outcome)
+    if not outcome.solved or len(outcome.attempts) != 2 or outcome.attempts[0].result.applied:
+        raise SystemExit("FAIL — malformed candidate should be skipped and the loop continue")
+
+    if delayed.model_dump() != delayed_snapshot:
+        raise SystemExit("FAIL — recovery loop must not modify the real situation")
+
+    print("RECOVERY LOOP OK — proposes, verifies, feeds back, and stops correctly.")
 
 
 if __name__ == "__main__":

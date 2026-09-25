@@ -1,14 +1,23 @@
-"""CLI: feasibility checks + travel delay impact.
+"""CLI: feasibility checks, travel delay impact, and recovery candidate simulation.
 
   python -m app.check
 """
 
 from __future__ import annotations
 
+from .candidate import (
+    AddCommitment,
+    AddDependency,
+    Candidate,
+    RemoveDependency,
+    SimulationResult,
+    UpdateCommitment,
+    simulate,
+)
 from .engine import describe_situation, list_situation_ids, load_all_situations
 from .feasibility import evaluate_situation
-from .impact import evaluate_impact
-from .models import Event, Situation
+from .impact import apply_event, evaluate_impact
+from .models import Commitment, Dependency, Event, Situation
 
 
 def _print_result(situation: Situation) -> None:
@@ -79,6 +88,62 @@ def _make_tv_capacity_two_three_overlap(situation: Situation) -> Situation:
         )
     )
     return crowded
+
+
+def _print_simulation(candidate: Candidate, result: SimulationResult) -> None:
+    print(f"Candidate: {candidate.id} — {candidate.rationale}")
+    print(f"applied={result.applied} feasible={result.feasible}")
+    print(f"broken_commitment_ids={result.broken_commitment_ids}")
+    print("reasons:")
+    for r in result.reasons:
+        print(f"  - {r}")
+    if result.assumptions:
+        print("assumptions:")
+        for a in result.assumptions:
+            print(f"  - {a}")
+    print()
+
+
+def _travel_recovery_candidates() -> list:
+    earlier_train = Candidate(
+        id="cand_earlier_train",
+        rationale="Take an earlier train that arrives well before 16:00",
+        edits=[UpdateCommitment(commitment_id="c_train", start="14:15", end="15:00")],
+        assumptions=["A 14:15 train to the airport exists"],
+    )
+    taxi = Candidate(
+        id="cand_taxi",
+        rationale="Skip the delayed train and take a taxi to the airport",
+        edits=[
+            AddCommitment(
+                commitment=Commitment(
+                    id="c_taxi",
+                    owner_id="me",
+                    action="take_taxi",
+                    start="15:20",
+                    end="15:50",
+                )
+            ),
+            UpdateCommitment(commitment_id="c_train", status="cancelled"),
+            RemoveDependency(dependency_id="dep_airport_needs_train"),
+            AddDependency(
+                dependency=Dependency(
+                    id="dep_airport_needs_taxi",
+                    from_id="c_airport_arrive",
+                    to_id="c_taxi",
+                )
+            ),
+        ],
+        assumptions=["A taxi is available at 15:20", "The taxi ride takes 30 minutes"],
+    )
+    later_arrival = Candidate(
+        id="cand_later_arrival",
+        rationale="Keep the delayed train and arrive at the airport at 16:30",
+        edits=[
+            UpdateCommitment(commitment_id="c_airport_arrive", start="16:30", end="16:30")
+        ],
+    )
+    return [earlier_train, taxi, later_arrival]
 
 
 def main() -> None:
@@ -204,6 +269,45 @@ def main() -> None:
         raise SystemExit("FAIL — expected dependency reason involving c_train / c_airport_arrive")
 
     print("IMPACT OK — apply + blast radius + before/after feasibility.")
+    print()
+
+    print("=" * 60)
+    print("RECOVERY — simulate candidates on the delayed travel_friday")
+    print("=" * 60)
+    delayed, _, _, _ = apply_event(travel, delay_event)
+    delayed_snapshot = delayed.model_dump()
+
+    expected = {
+        "cand_earlier_train": True,
+        "cand_taxi": True,
+        "cand_later_arrival": False,
+    }
+    for candidate in _travel_recovery_candidates():
+        result = simulate(delayed, candidate)
+        _print_simulation(candidate, result)
+        if not result.applied:
+            raise SystemExit(f"FAIL — {candidate.id} should apply cleanly")
+        if result.feasible is not expected[candidate.id]:
+            raise SystemExit(
+                f"FAIL — {candidate.id} expected feasible={expected[candidate.id]}"
+            )
+        if candidate.id == "cand_later_arrival" and "deadline" not in " ".join(result.reasons):
+            raise SystemExit("FAIL — later arrival should fail on the 16:00 deadline")
+
+    malformed = Candidate(
+        id="cand_malformed",
+        rationale="Edit a commitment that does not exist",
+        edits=[UpdateCommitment(commitment_id="c_helicopter", start="15:00", end="15:10")],
+    )
+    malformed_result = simulate(delayed, malformed)
+    _print_simulation(malformed, malformed_result)
+    if malformed_result.applied or malformed_result.feasible is not None:
+        raise SystemExit("FAIL — malformed candidate should be rejected before feasibility")
+
+    if delayed.model_dump() != delayed_snapshot:
+        raise SystemExit("FAIL — simulate must not modify the real situation")
+
+    print("RECOVERY OK — candidates are verified on a copy; malformed edits are rejected.")
 
 
 if __name__ == "__main__":

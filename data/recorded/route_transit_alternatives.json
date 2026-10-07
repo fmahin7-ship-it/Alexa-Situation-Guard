@@ -1,0 +1,792 @@
+{
+    "PricingBucket": "Core",
+    "LegGeometryFormat": "FlexiblePolyline",
+    "Notices": [],
+    "Routes": [
+        {
+            "Legs": [
+                {
+                    "Geometry": {
+                        "Polyline": "BGrgh0gCoq7sgJAAjIzFnVvRnG3InB_ETvHAvHkD_JsE3NAzF8BrJvH_E7G3D7QzK3DvCzF3D3D4N7LgZjNkXvCwCjNkXjGiK"
+                    },
+                    "PedestrianLegDetails": {
+                        "Arrival": {
+                            "Place": {
+                                "Name": "Central Station",
+                                "Position": [
+                                    151.205829,
+                                    -33.883882
+                                ],
+                                "StationDetails": {
+                                    "Accessibility": {
+                                        "Wheelchair": "Available"
+                                    }
+                                },
+                                "Type": "Station"
+                            },
+                            "Time": "2026-10-02T15:08:00+10:00"
+                        },
+                        "Departure": {
+                            "Place": {
+                                "Position": [
+                                    151.2063,
+                                    -33.883
+                                ]
+                            },
+                            "Time": "2026-10-02T15:01:00+10:00"
+                        },
+                        "PassThroughWaypoints": [],
+                        "Spans": [],
+                        "Summary": {
+                            "Overview": {
+                                "Distance": 420,
+                                "Duration": 420
+                            },
+                            "TravelOnly": {
+                                "Duration": 420
+                            }
+                        },
+                        "TravelSteps": [
+                            {
+                                "Distance": 170,
+                                "Duration": 177,
+                                "GeometryOffset": 0,
+                                "Instruction": "Head southwest on Railway Colonnade Dr. Go for 170 m.",
+                                "Type": "Depart"
+                            },
+                            {
+                                "Distance": 81,
+                                "Duration": 81,
+                                "GeometryOffset": 11,
+                                "Instruction": "Turn left onto Lee St. Go for 81 m.",
+                                "TurnStepDetails": {
+                                    "SteeringDirection": "Left",
+                                    "TurnIntensity": "Typical"
+                                },
+                                "Type": "Turn"
+                            },
+                            {
+                                "Distance": 169,
+                                "Duration": 169,
+                                "GeometryOffset": 16,
+                                "Instruction": "Turn left onto Henry Deane Plz. Go for 169 m.",
+                                "TurnStepDetails": {
+                                    "SteeringDirection": "Left",
+                                    "TurnIntensity": "Typical"
+                                },
+                                "Type": "Turn"
+                            },
+                            {
+                                "Distance": 0,
+                                "Duration": 0,
+                                "GeometryOffset": 22,
+                                "Instruction": "Arrive at Devonshire St Tunnel. Your destination is on the left.",
+                                "Type": "Arrive"
+                            }
+                        ]
+                    },
+                    "TravelMode": "Pedestrian",
+                    "Type": "Pedestrian"
+                },
+                {
+                    "Geometry": {
+                        "Polyline": "BH_ywpmU42lhk6CvvB_sB7lc3oe3mL7hKvoMv0Lv9O3wL3_LrgHz2Jv3Cn6P_lCrrxB3oKz_M3xDjotB_-HnjYsiGr0bgzIr4eo7HjpMwrD__dk4HvzO45EnzQg5FzhHgkDvsP7iCzwMz6CzoGz-F7rFj4Hj1Gr0H7azej5O7vc7qI7mjB3vTjtjBzsEv7Fvgf3-d306EvssEjsIr6E3j3B_2Gzle_6JjqEnVvhI3mBrqqB49C7lI8arhO3N7lNzkD30sBz_M_zjB3kMn9G39C38K7xHnhF_-HztGjsI7iCj4HrrE7hKv_Dv5VkvE3jjB8xCr_TkNv6N_7BvuOntEz-Un5I31kB_-Hz8pBn9G7za30J_riB3pC3kMnan4QgoB_mJwrDvqL00FrxQs7GroN"
+                    },
+                    "TravelMode": "RegionalTrain",
+                    "Type": "Transit",
+                    "TransitLegDetails": {
+                        "AfterTravelSteps": [],
+                        "Agency": {
+                            "Name": "Sydney Trains",
+                            "Url": "https://transportnsw.info/"
+                        },
+                        "Arrival": {
+                            "Place": {
+                                "Name": "International Airport Station",
+                                "Position": [
+                                    151.165891,
+                                    -33.934988
+                                ],
+                                "StationDetails": {
+                                    "Accessibility": {
+                                        "Wheelchair": "Available"
+                                    }
+                                },
+                                "Type": "Station"
+                            },
+                            "Time": "2026-10-02T15:20:00+10:00"
+                        },
+                        "Attributions": [],
+                        "BeforeTravelSteps": [],
+                        "BookingWebLinks": [],
+                        "Departure": {
+                            "Place": {
+                                "Name": "Central Station",
+                                "Position": [
+                                    151.205829,
+                                    -33.883882
+                                ],
+                                "StationDetails": {
+                                    "Accessibility": {
+                                        "Wheelchair": "Available"
+                                    }
+                                },
+                                "Type": "Station"
+                            },
+                            "Time": "2026-10-02T15:08:00+10:00"
+                        },
+                        "Incidents": [],
+                        "IntermediateStops": [],
+                        "NextDepartures": [],
+                        "Notices": [],
+                        "PassThroughWaypoints": [],
+                        "Spans": [],
+                        "Summary": {
+                            "Overview": {
+                                "Distance": 8036,
+                                "Duration": 720
+                            },
+                            "TravelOnly": {
+                                "Duration": 720
+                            }
+                        },
+                        "Transport": {
+                            "Color": "#00954C",
+                            "Headsign": "Macarthur via Airport",
+                            "LongRouteName": "City Circle to Macarthur via Airport",
+                            "Mode": "RegionalTrain",
+                            "RouteName": "T8",
+                            "ShortRouteName": "T8",
+                            "TextColor": "#FFFFFF"
+                        },
+                        "TravelSteps": []
+                    }
+                },
+                {
+                    "Geometry": {
+                        "Polyline": "BG_mn3gCg5tqgJrY7L3I7G3IvM_EjIjNwvB"
+                    },
+                    "PedestrianLegDetails": {
+                        "Arrival": {
+                            "Place": {
+                                "Position": [
+                                    151.1664,
+                                    -33.9361
+                                ]
+                            },
+                            "Time": "2026-10-02T15:23:00+10:00"
+                        },
+                        "Departure": {
+                            "Place": {
+                                "Name": "International Airport Station",
+                                "Position": [
+                                    151.165891,
+                                    -33.934988
+                                ],
+                                "StationDetails": {
+                                    "Accessibility": {
+                                        "Wheelchair": "Available"
+                                    }
+                                },
+                                "Type": "Station"
+                            },
+                            "Time": "2026-10-02T15:20:00+10:00"
+                        },
+                        "PassThroughWaypoints": [],
+                        "Spans": [],
+                        "Summary": {
+                            "Overview": {
+                                "Distance": 178,
+                                "Duration": 180
+                            },
+                            "TravelOnly": {
+                                "Duration": 180
+                            }
+                        },
+                        "TravelSteps": [
+                            {
+                                "Distance": 105,
+                                "Duration": 105,
+                                "GeometryOffset": 0,
+                                "Instruction": "Head south on Arrival Ct. Go for 105 m.",
+                                "Type": "Depart"
+                            },
+                            {
+                                "Distance": 73,
+                                "Duration": 73,
+                                "GeometryOffset": 4,
+                                "Instruction": "Turn left. Go for 73 m.",
+                                "TurnStepDetails": {
+                                    "SteeringDirection": "Left",
+                                    "TurnIntensity": "Typical"
+                                },
+                                "Type": "Turn"
+                            },
+                            {
+                                "Distance": 0,
+                                "Duration": 0,
+                                "GeometryOffset": 5,
+                                "Instruction": "Arrive at your destination on the right.",
+                                "Type": "Arrive"
+                            }
+                        ]
+                    },
+                    "TravelMode": "Pedestrian",
+                    "Type": "Pedestrian"
+                }
+            ],
+            "Summary": {
+                "Distance": 8634,
+                "Duration": 1320
+            }
+        },
+        {
+            "Legs": [
+                {
+                    "Geometry": {
+                        "Polyline": "BGrgh0gCoq7sgJAAjIzFnVvRnG3InB_ETvHAvHkD_JsE3NAzF8BrJvH_E7G3D7QzK3DvCzF3D3D4N7LgZjNkXvCwCjNkXjGiK"
+                    },
+                    "PedestrianLegDetails": {
+                        "Arrival": {
+                            "Place": {
+                                "Name": "Central Station",
+                                "Position": [
+                                    151.205829,
+                                    -33.883882
+                                ],
+                                "StationDetails": {
+                                    "Accessibility": {
+                                        "Wheelchair": "Available"
+                                    }
+                                },
+                                "Type": "Station"
+                            },
+                            "Time": "2026-10-02T15:17:00+10:00"
+                        },
+                        "Departure": {
+                            "Place": {
+                                "Position": [
+                                    151.2063,
+                                    -33.883
+                                ]
+                            },
+                            "Time": "2026-10-02T15:10:00+10:00"
+                        },
+                        "PassThroughWaypoints": [],
+                        "Spans": [],
+                        "Summary": {
+                            "Overview": {
+                                "Distance": 420,
+                                "Duration": 420
+                            },
+                            "TravelOnly": {
+                                "Duration": 420
+                            }
+                        },
+                        "TravelSteps": [
+                            {
+                                "Distance": 170,
+                                "Duration": 177,
+                                "GeometryOffset": 0,
+                                "Instruction": "Head southwest on Railway Colonnade Dr. Go for 170 m.",
+                                "Type": "Depart"
+                            },
+                            {
+                                "Distance": 81,
+                                "Duration": 81,
+                                "GeometryOffset": 11,
+                                "Instruction": "Turn left onto Lee St. Go for 81 m.",
+                                "TurnStepDetails": {
+                                    "SteeringDirection": "Left",
+                                    "TurnIntensity": "Typical"
+                                },
+                                "Type": "Turn"
+                            },
+                            {
+                                "Distance": 169,
+                                "Duration": 169,
+                                "GeometryOffset": 16,
+                                "Instruction": "Turn left onto Henry Deane Plz. Go for 169 m.",
+                                "TurnStepDetails": {
+                                    "SteeringDirection": "Left",
+                                    "TurnIntensity": "Typical"
+                                },
+                                "Type": "Turn"
+                            },
+                            {
+                                "Distance": 0,
+                                "Duration": 0,
+                                "GeometryOffset": 22,
+                                "Instruction": "Arrive at Devonshire St Tunnel. Your destination is on the left.",
+                                "Type": "Arrive"
+                            }
+                        ]
+                    },
+                    "TravelMode": "Pedestrian",
+                    "Type": "Pedestrian"
+                },
+                {
+                    "Geometry": {
+                        "Polyline": "BH_ywpmU42lhk6CvvB_sB7lc3oe3mL7hKvoMv0Lv9O3wL3_LrgHz2Jv3Cn6P_lCrrxB3oKz_M3xDjotB_-HnjYsiGr0bgzIr4eo7HjpMwrD__dk4HvzO45EnzQg5FzhHgkDvsP7iCzwMz6CzoGz-F7rFj4Hj1Gr0H7azej5O7vc7qI7mjB3vTjtjBzsEv7Fvgf3-d306EvssEjsIr6E3j3B_2Gzle_6JjqEnVvhI3mBrqqB49C7lI8arhO3N7lNzkD30sBz_M_zjB3kMn9G39C38K7xHnhF_-HztGjsI7iCj4HrrE7hKv_Dv5VkvE3jjB8xCr_TkNv6N_7BvuOntEz-Un5I31kB_-Hz8pBn9G7za30J_riB3pC3kMnan4QgoB_mJwrDvqL00FrxQs7GroN"
+                    },
+                    "TravelMode": "RegionalTrain",
+                    "Type": "Transit",
+                    "TransitLegDetails": {
+                        "AfterTravelSteps": [],
+                        "Agency": {
+                            "Name": "Sydney Trains",
+                            "Url": "https://transportnsw.info/"
+                        },
+                        "Arrival": {
+                            "Place": {
+                                "Name": "International Airport Station",
+                                "Position": [
+                                    151.165891,
+                                    -33.934988
+                                ],
+                                "StationDetails": {
+                                    "Accessibility": {
+                                        "Wheelchair": "Available"
+                                    }
+                                },
+                                "Type": "Station"
+                            },
+                            "Time": "2026-10-02T15:29:00+10:00"
+                        },
+                        "Attributions": [],
+                        "BeforeTravelSteps": [],
+                        "BookingWebLinks": [],
+                        "Departure": {
+                            "Place": {
+                                "Name": "Central Station",
+                                "Position": [
+                                    151.205829,
+                                    -33.883882
+                                ],
+                                "StationDetails": {
+                                    "Accessibility": {
+                                        "Wheelchair": "Available"
+                                    }
+                                },
+                                "Type": "Station"
+                            },
+                            "Time": "2026-10-02T15:17:00+10:00"
+                        },
+                        "Incidents": [],
+                        "IntermediateStops": [],
+                        "NextDepartures": [],
+                        "Notices": [],
+                        "PassThroughWaypoints": [],
+                        "Spans": [],
+                        "Summary": {
+                            "Overview": {
+                                "Distance": 8036,
+                                "Duration": 720
+                            },
+                            "TravelOnly": {
+                                "Duration": 720
+                            }
+                        },
+                        "Transport": {
+                            "Color": "#00954C",
+                            "Headsign": "Revesby via Airport",
+                            "LongRouteName": "City Circle to Macarthur via Airport",
+                            "Mode": "RegionalTrain",
+                            "RouteName": "T8",
+                            "ShortRouteName": "T8",
+                            "TextColor": "#FFFFFF"
+                        },
+                        "TravelSteps": []
+                    }
+                },
+                {
+                    "Geometry": {
+                        "Polyline": "BG_mn3gCg5tqgJrY7L3I7G3IvM_EjIjNwvB"
+                    },
+                    "PedestrianLegDetails": {
+                        "Arrival": {
+                            "Place": {
+                                "Position": [
+                                    151.1664,
+                                    -33.9361
+                                ]
+                            },
+                            "Time": "2026-10-02T15:32:00+10:00"
+                        },
+                        "Departure": {
+                            "Place": {
+                                "Name": "International Airport Station",
+                                "Position": [
+                                    151.165891,
+                                    -33.934988
+                                ],
+                                "StationDetails": {
+                                    "Accessibility": {
+                                        "Wheelchair": "Available"
+                                    }
+                                },
+                                "Type": "Station"
+                            },
+                            "Time": "2026-10-02T15:29:00+10:00"
+                        },
+                        "PassThroughWaypoints": [],
+                        "Spans": [],
+                        "Summary": {
+                            "Overview": {
+                                "Distance": 178,
+                                "Duration": 180
+                            },
+                            "TravelOnly": {
+                                "Duration": 180
+                            }
+                        },
+                        "TravelSteps": [
+                            {
+                                "Distance": 105,
+                                "Duration": 105,
+                                "GeometryOffset": 0,
+                                "Instruction": "Head south on Arrival Ct. Go for 105 m.",
+                                "Type": "Depart"
+                            },
+                            {
+                                "Distance": 73,
+                                "Duration": 73,
+                                "GeometryOffset": 4,
+                                "Instruction": "Turn left. Go for 73 m.",
+                                "TurnStepDetails": {
+                                    "SteeringDirection": "Left",
+                                    "TurnIntensity": "Typical"
+                                },
+                                "Type": "Turn"
+                            },
+                            {
+                                "Distance": 0,
+                                "Duration": 0,
+                                "GeometryOffset": 5,
+                                "Instruction": "Arrive at your destination on the right.",
+                                "Type": "Arrive"
+                            }
+                        ]
+                    },
+                    "TravelMode": "Pedestrian",
+                    "Type": "Pedestrian"
+                }
+            ],
+            "Summary": {
+                "Distance": 8634,
+                "Duration": 1320
+            }
+        },
+        {
+            "Legs": [
+                {
+                    "Geometry": {
+                        "Polyline": "BGrgh0gCoq7sgJAAjIzFnVvRnG3InB_ETvHAvHkD_JsE3NAzF8BrJvH_E7G3D7QzK3DvCzF3D3D4N7LgZjNkXvCwCjNkXjGiK"
+                    },
+                    "PedestrianLegDetails": {
+                        "Arrival": {
+                            "Place": {
+                                "Name": "Central Station",
+                                "Position": [
+                                    151.205829,
+                                    -33.883882
+                                ],
+                                "StationDetails": {
+                                    "Accessibility": {
+                                        "Wheelchair": "Available"
+                                    }
+                                },
+                                "Type": "Station"
+                            },
+                            "Time": "2026-10-02T15:09:00+10:00"
+                        },
+                        "Departure": {
+                            "Place": {
+                                "Position": [
+                                    151.2063,
+                                    -33.883
+                                ]
+                            },
+                            "Time": "2026-10-02T15:02:00+10:00"
+                        },
+                        "PassThroughWaypoints": [],
+                        "Spans": [],
+                        "Summary": {
+                            "Overview": {
+                                "Distance": 420,
+                                "Duration": 420
+                            },
+                            "TravelOnly": {
+                                "Duration": 420
+                            }
+                        },
+                        "TravelSteps": [
+                            {
+                                "Distance": 170,
+                                "Duration": 177,
+                                "GeometryOffset": 0,
+                                "Instruction": "Head southwest on Railway Colonnade Dr. Go for 170 m.",
+                                "Type": "Depart"
+                            },
+                            {
+                                "Distance": 81,
+                                "Duration": 81,
+                                "GeometryOffset": 11,
+                                "Instruction": "Turn left onto Lee St. Go for 81 m.",
+                                "TurnStepDetails": {
+                                    "SteeringDirection": "Left",
+                                    "TurnIntensity": "Typical"
+                                },
+                                "Type": "Turn"
+                            },
+                            {
+                                "Distance": 169,
+                                "Duration": 169,
+                                "GeometryOffset": 16,
+                                "Instruction": "Turn left onto Henry Deane Plz. Go for 169 m.",
+                                "TurnStepDetails": {
+                                    "SteeringDirection": "Left",
+                                    "TurnIntensity": "Typical"
+                                },
+                                "Type": "Turn"
+                            },
+                            {
+                                "Distance": 0,
+                                "Duration": 0,
+                                "GeometryOffset": 22,
+                                "Instruction": "Arrive at Devonshire St Tunnel. Your destination is on the left.",
+                                "Type": "Arrive"
+                            }
+                        ]
+                    },
+                    "TravelMode": "Pedestrian",
+                    "Type": "Pedestrian"
+                },
+                {
+                    "Geometry": {
+                        "Polyline": "BH_ywpmU42lhk6CvvB_sB7lc3oevlfn7qBvqLv6NvvGjwG7xHriG35Er8D_yIvtH7kQ3sIj-On5I3tPvyMjrL_7GztBjc_k8B7wUj4HvzEvjHn9GjwGz3Ln1FzyV3xDz4mB31Br-qBvvGrqqBr-C3oKr-HnjYjoF3wL_iLnoO71Kj0JrxVjuHjc_J71tBzjLjzRz0F7hKntEn1F39CzjL75Ir-Hr-H_yIzvKjwG_uKjsIzmW3gE75NjzW34tCvzEvyMzgF38KruoBnn-BrsiC7plDr8Sv6c79G71K36iC3umDrhO7gS_6J_mJngSrtNjyPjpHvluB3oKvjC_O_jX79LvrD_7B_6J_-H38K7hKr7Q3zRvkE_mE"
+                    },
+                    "TravelMode": "RegionalTrain",
+                    "Type": "Transit",
+                    "TransitLegDetails": {
+                        "AfterTravelSteps": [],
+                        "Agency": {
+                            "Name": "Sydney Trains",
+                            "Url": "https://transportnsw.info/"
+                        },
+                        "Arrival": {
+                            "Place": {
+                                "Name": "Wolli Creek Station",
+                                "Position": [
+                                    151.154113,
+                                    -33.928547
+                                ],
+                                "StationDetails": {
+                                    "Accessibility": {
+                                        "Wheelchair": "Available"
+                                    }
+                                },
+                                "Type": "Station"
+                            },
+                            "Time": "2026-10-02T15:20:00+10:00"
+                        },
+                        "Attributions": [],
+                        "BeforeTravelSteps": [],
+                        "BookingWebLinks": [],
+                        "Departure": {
+                            "Place": {
+                                "Name": "Central Station",
+                                "Position": [
+                                    151.205829,
+                                    -33.883882
+                                ],
+                                "StationDetails": {
+                                    "Accessibility": {
+                                        "Wheelchair": "Available"
+                                    }
+                                },
+                                "Type": "Station"
+                            },
+                            "Time": "2026-10-02T15:09:00+10:00"
+                        },
+                        "Incidents": [],
+                        "IntermediateStops": [],
+                        "NextDepartures": [],
+                        "Notices": [],
+                        "PassThroughWaypoints": [],
+                        "Spans": [],
+                        "Summary": {
+                            "Overview": {
+                                "Distance": 7337,
+                                "Duration": 660
+                            },
+                            "TravelOnly": {
+                                "Duration": 660
+                            }
+                        },
+                        "Transport": {
+                            "Color": "#005AA3",
+                            "Headsign": "Waterfall via Banksia",
+                            "LongRouteName": "Bondi Junction to Waterfall via City",
+                            "Mode": "RegionalTrain",
+                            "RouteName": "T4",
+                            "ShortRouteName": "T4",
+                            "TextColor": "#FFFFFF"
+                        },
+                        "TravelSteps": []
+                    }
+                },
+                {
+                    "Geometry": {
+                        "Polyline": "BH33pknU47khj6CnGoxC72C07OzwC8lIzgFgvK39lBkllCj3Pw1Xj6akrzB70D0wHn7C8pGjsIkoKj-O47c"
+                    },
+                    "TravelMode": "RegionalTrain",
+                    "Type": "Transit",
+                    "TransitLegDetails": {
+                        "AfterTravelSteps": [],
+                        "Agency": {
+                            "Name": "Sydney Trains",
+                            "Url": "https://transportnsw.info/"
+                        },
+                        "Arrival": {
+                            "Place": {
+                                "Name": "International Airport Station",
+                                "Position": [
+                                    151.165891,
+                                    -33.934988
+                                ],
+                                "StationDetails": {
+                                    "Accessibility": {
+                                        "Wheelchair": "Available"
+                                    }
+                                },
+                                "Type": "Station"
+                            },
+                            "Time": "2026-10-02T15:26:00+10:00"
+                        },
+                        "Attributions": [],
+                        "BeforeTravelSteps": [],
+                        "BookingWebLinks": [],
+                        "Departure": {
+                            "Place": {
+                                "Name": "Wolli Creek Station",
+                                "Position": [
+                                    151.154113,
+                                    -33.928547
+                                ],
+                                "StationDetails": {
+                                    "Accessibility": {
+                                        "Wheelchair": "Available"
+                                    }
+                                },
+                                "Type": "Station"
+                            },
+                            "Time": "2026-10-02T15:24:00+10:00"
+                        },
+                        "Incidents": [],
+                        "IntermediateStops": [],
+                        "NextDepartures": [],
+                        "Notices": [],
+                        "PassThroughWaypoints": [],
+                        "Spans": [],
+                        "Summary": {
+                            "Overview": {
+                                "Distance": 1308,
+                                "Duration": 120
+                            },
+                            "TravelOnly": {
+                                "Duration": 120
+                            }
+                        },
+                        "Transport": {
+                            "Color": "#00954C",
+                            "Headsign": "City Circle via Airport",
+                            "LongRouteName": "Macarthur to City Circle via Airport",
+                            "Mode": "RegionalTrain",
+                            "RouteName": "T8",
+                            "ShortRouteName": "T8",
+                            "TextColor": "#FFFFFF"
+                        },
+                        "TravelSteps": []
+                    }
+                },
+                {
+                    "Geometry": {
+                        "Polyline": "BG_mn3gCg5tqgJrY7L3I7G3IvM_EjIjNwvB"
+                    },
+                    "PedestrianLegDetails": {
+                        "Arrival": {
+                            "Place": {
+                                "Position": [
+                                    151.1664,
+                                    -33.9361
+                                ]
+                            },
+                            "Time": "2026-10-02T15:29:00+10:00"
+                        },
+                        "Departure": {
+                            "Place": {
+                                "Name": "International Airport Station",
+                                "Position": [
+                                    151.165891,
+                                    -33.934988
+                                ],
+                                "StationDetails": {
+                                    "Accessibility": {
+                                        "Wheelchair": "Available"
+                                    }
+                                },
+                                "Type": "Station"
+                            },
+                            "Time": "2026-10-02T15:26:00+10:00"
+                        },
+                        "PassThroughWaypoints": [],
+                        "Spans": [],
+                        "Summary": {
+                            "Overview": {
+                                "Distance": 178,
+                                "Duration": 180
+                            },
+                            "TravelOnly": {
+                                "Duration": 180
+                            }
+                        },
+                        "TravelSteps": [
+                            {
+                                "Distance": 105,
+                                "Duration": 105,
+                                "GeometryOffset": 0,
+                                "Instruction": "Head south on Arrival Ct. Go for 105 m.",
+                                "Type": "Depart"
+                            },
+                            {
+                                "Distance": 73,
+                                "Duration": 73,
+                                "GeometryOffset": 4,
+                                "Instruction": "Turn left. Go for 73 m.",
+                                "TurnStepDetails": {
+                                    "SteeringDirection": "Left",
+                                    "TurnIntensity": "Typical"
+                                },
+                                "Type": "Turn"
+                            },
+                            {
+                                "Distance": 0,
+                                "Duration": 0,
+                                "GeometryOffset": 5,
+                                "Instruction": "Arrive at your destination on the right.",
+                                "Type": "Arrive"
+                            }
+                        ]
+                    },
+                    "TravelMode": "Pedestrian",
+                    "Type": "Pedestrian"
+                }
+            ],
+            "Summary": {
+                "Distance": 9243,
+                "Duration": 1380
+            }
+        }
+    ]
+}

@@ -1,0 +1,233 @@
+{
+    "PricingBucket": "Core",
+    "LegGeometryFormat": "FlexiblePolyline",
+    "Notices": [],
+    "Routes": [
+        {
+            "Legs": [
+                {
+                    "Geometry": {
+                        "Polyline": "BGvjh0gC8n_sgJ4IgFkDnGsE3IwCrEsJvRoG7LoG7L0F7LkI7Q4D7G8B_E0FrJ7GnBvMnL_EzFnf3mB3N3S7G_O3D_OzK_EvH_E7G3D7QzK3DvCzF3D_OrJ_iBnV7GrEzKrE7GjDnQrE7G7B3ITzPnGjS3IzF3DnLzKjS7VjI3IzF7G3DjDjIrE7G7BriB7GrET7LvC7Q3DvM7BrJAjIoBvH8BrJsE_J4DvRkD3ITzKjDzFvC_iBzUjcnQ_TjDjS_EvR3DnQ_EnLjDnBTvM_E_JzFnGrErY3NjNnGv0B7arYzKzjB7Q_JrEzP7G3N3DnLUjNsEjSoGvMsEvMgFvHrYzF7VjDrOrOgF7Q0FjNsEzZ4IjmBkN7Q0F_sB0PzyBwR_TwH_O0F7akNzU0KzPkIzUkIzKsEzoB4NnkB8QzUsJnQoGvMsEnL4DnL4DzK4DrJ4DrJ4D3IsE7GwHzF0KjDgFnG8GjD8BzF8BnGT_EnBjIvHzK3IjXrTjN7LnQ3N3SnQ3NnL7Q_OvR_O7arYjrBnkBrJ3IzFrErO7LjmBjhBnavWzF_EzK3IvR7LrT7LjNjInQzKzP_J7LvH3X7Q7GrEvH_EzejSzP3IvgBzU_EjDrdjS3N3IjNjIjSnLvRnLrOrJrTvM7QzK7QzK3N3I_JnG7LvH_JnGjNjIvRnLzZnQ_EjD_T7LnLvHvH_E3IzFnL7GrJzFzKnGvbnQjIjDvMvCzZvC3NA_YnBjDAvWrE3N3DrOrE7GnB_E7B_OvHnGrEnpBvgB3DjDvWjSzF3D7LnLjNjNvW7VrO_OjIrEzP_OjI3IzU7VnL7L_J_J7L7L7V7QnVnL3I3D3IjD7pBvMrdvHjXnGjN3DzF7BzK3DzUvH7LrE_TjInL3D_EzFnGrE_JrEnL_E3I3DjN_EvHvCjIvC7L_EUrEkD_J8B7GwC3I8B_E4DnL4IvRgKjSwH7LoGjIoGvH4DrEsErEwH7G8LrJ8GrEgPjIgP_EkS7BgKU8Q8B0ZsEgjB0FgPUgKTkSjD4NrE0PvHoLvH4NvM8GvHgFnG0KnQwM3coGrYoGnfgFzZ8BvHoLv0B4DnVkDjhBArOvCrdzFzjBjD7QjDzUjI_xBnB3IvCzeUzZoBjNwCvMsErOkI3S8GjNsJ7L4I3IkNnLsJnG4N7G8LrEoavH4N3DoLjDoajIokBvMsJ3DgP3IsJ3IsEzF8G7LgFjNwC7LUvHTvR7B_J_J3c3DzK_ErOjc7nC_TnpBzPzZzP7VjNnQ3cnfnLzKna_TjX7QzevR7avMvHjDvMzFnLzFzUrJnQnG_YvHnazF_JnBvbjDzFAriBrEvH7BjS_E7QjInL3IrJjInL_EnGzFvR_OnG_E3I_EjI7B3IAvHoBrE8BrJ8G_E0FjI4NvCoGzKkcjI4SrEkInGsJnGwHjIkInLkIvM8GvM4D7GoBvR8B31B4NnG8BzK8BzFTvM3D_Y7LnLzFpBX"
+                    },
+                    "TravelMode": "Car",
+                    "Type": "Vehicle",
+                    "VehicleLegDetails": {
+                        "Arrival": {
+                            "Place": {
+                                "OriginalPosition": [
+                                    151.1663999,
+                                    -33.9361
+                                ],
+                                "Position": [
+                                    151.1659585,
+                                    -33.9359414
+                                ]
+                            },
+                            "Time": "2026-10-02T15:21:27+10:00"
+                        },
+                        "Departure": {
+                            "Place": {
+                                "OriginalPosition": [
+                                    151.2063,
+                                    -33.883
+                                ],
+                                "Position": [
+                                    151.20755,
+                                    -33.8826801
+                                ]
+                            },
+                            "Time": "2026-10-02T15:00:00+10:00"
+                        },
+                        "Incidents": [],
+                        "Notices": [],
+                        "PassThroughWaypoints": [],
+                        "Spans": [],
+                        "Summary": {
+                            "Overview": {
+                                "BestCaseDuration": 1006,
+                                "Distance": 10545,
+                                "Duration": 1287
+                            },
+                            "TravelOnly": {
+                                "BestCaseDuration": 1006,
+                                "Duration": 1287
+                            }
+                        },
+                        "Tolls": [],
+                        "TollSystems": [],
+                        "TravelSteps": [
+                            {
+                                "Distance": 17,
+                                "Duration": 10,
+                                "ExitNumber": [],
+                                "GeometryOffset": 0,
+                                "Type": "Depart"
+                            },
+                            {
+                                "Distance": 193,
+                                "Duration": 57,
+                                "ExitNumber": [],
+                                "GeometryOffset": 1,
+                                "TurnStepDetails": {
+                                    "Intersection": [],
+                                    "SteeringDirection": "Left",
+                                    "TurnIntensity": "Typical"
+                                },
+                                "Type": "Turn"
+                            },
+                            {
+                                "Distance": 216,
+                                "Duration": 39,
+                                "ExitNumber": [],
+                                "GeometryOffset": 12,
+                                "TurnStepDetails": {
+                                    "Intersection": [],
+                                    "SteeringDirection": "Left",
+                                    "TurnIntensity": "Typical"
+                                },
+                                "Type": "Turn"
+                            },
+                            {
+                                "Distance": 306,
+                                "Duration": 40,
+                                "ExitNumber": [],
+                                "GeometryOffset": 19,
+                                "TurnStepDetails": {
+                                    "Intersection": [],
+                                    "SteeringDirection": "Left",
+                                    "TurnIntensity": "Typical"
+                                },
+                                "Type": "Turn"
+                            },
+                            {
+                                "Distance": 1159,
+                                "Duration": 176,
+                                "ExitNumber": [],
+                                "GeometryOffset": 33,
+                                "Type": "Continue"
+                            },
+                            {
+                                "Distance": 179,
+                                "Duration": 47,
+                                "ExitNumber": [],
+                                "GeometryOffset": 74,
+                                "Type": "Continue"
+                            },
+                            {
+                                "Distance": 93,
+                                "Duration": 25,
+                                "ExitNumber": [],
+                                "GeometryOffset": 81,
+                                "TurnStepDetails": {
+                                    "Intersection": [],
+                                    "SteeringDirection": "Right",
+                                    "TurnIntensity": "Typical"
+                                },
+                                "Type": "Turn"
+                            },
+                            {
+                                "Distance": 1099,
+                                "Duration": 170,
+                                "ExitNumber": [],
+                                "GeometryOffset": 84,
+                                "TurnStepDetails": {
+                                    "Intersection": [],
+                                    "SteeringDirection": "Left",
+                                    "TurnIntensity": "Typical"
+                                },
+                                "Type": "Turn"
+                            },
+                            {
+                                "Distance": 3138,
+                                "Duration": 370,
+                                "ExitNumber": [],
+                                "GeometryOffset": 118,
+                                "Type": "Continue"
+                            },
+                            {
+                                "Distance": 135,
+                                "Duration": 29,
+                                "ExitNumber": [],
+                                "GeometryOffset": 216,
+                                "TurnStepDetails": {
+                                    "Intersection": [],
+                                    "SteeringDirection": "Right",
+                                    "TurnIntensity": "Typical"
+                                },
+                                "Type": "Turn"
+                            },
+                            {
+                                "Distance": 1377,
+                                "Duration": 117,
+                                "ExitNumber": [],
+                                "GeometryOffset": 224,
+                                "TurnStepDetails": {
+                                    "Intersection": [],
+                                    "SteeringDirection": "Right",
+                                    "TurnIntensity": "Typical"
+                                },
+                                "Type": "Turn"
+                            },
+                            {
+                                "Distance": 1921,
+                                "Duration": 115,
+                                "ExitNumber": [],
+                                "GeometryOffset": 273,
+                                "RampStepDetails": {
+                                    "Intersection": [],
+                                    "SteeringDirection": "Left"
+                                },
+                                "Type": "Ramp"
+                            },
+                            {
+                                "Distance": 447,
+                                "Duration": 46,
+                                "ExitNumber": [],
+                                "GeometryOffset": 331,
+                                "KeepStepDetails": {
+                                    "Intersection": [],
+                                    "SteeringDirection": "Left"
+                                },
+                                "Type": "Keep"
+                            },
+                            {
+                                "Distance": 265,
+                                "Duration": 46,
+                                "ExitNumber": [],
+                                "GeometryOffset": 354,
+                                "Type": "Ramp"
+                            },
+                            {
+                                "Distance": 0,
+                                "Duration": 0,
+                                "ExitNumber": [],
+                                "GeometryOffset": 363,
+                                "Type": "Arrive"
+                            }
+                        ],
+                        "TruckRoadTypes": [],
+                        "Zones": []
+                    }
+                }
+            ],
+            "MajorRoadLabels": [
+                {
+                    "RoadName": {
+                        "Language": "en",
+                        "Value": "O'Riordan St"
+                    }
+                },
+                {
+                    "RoadName": {
+                        "Language": "en",
+                        "Value": "Airport Dr"
+                    }
+                }
+            ],
+            "Summary": {
+                "Distance": 10545,
+                "Duration": 1287
+            }
+        }
+    ]
+}

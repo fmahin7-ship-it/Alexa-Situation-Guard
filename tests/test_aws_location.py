@@ -72,7 +72,8 @@ def test_route1_legs_keep_aws_detail_without_inventing_names():
     assert walk_in.from_position == [151.2063, -33.883]
 
     assert (train.line, train.headsign, train.agency) == ("T8", "Macarthur via Airport", "Sydney Trains")
-    assert train.aws_mode == "RegionalTrain"
+    assert train.source_mode == "RegionalTrain"
+    assert route1.source == "amazon-location"
     assert (_clock(train.depart_at), _clock(train.arrive_at)) == ("15:08", "15:20")
     assert train.duration_s == 720
     assert train.distance_m == 8036

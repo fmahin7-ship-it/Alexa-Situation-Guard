@@ -31,7 +31,9 @@ _LEG_KINDS: Dict[str, LegKind] = {
     "Vehicle": "drive",
 }
 
-CAR_TRAFFIC_ASSUMPTION = "Car times assume expected traffic; best_case_seconds is the no-traffic duration"
+SOURCE = "amazon-location"
+
+CAR_TRAFFIC_ASSUMPTION ="Car times assume expected traffic; best_case_seconds is the no-traffic duration"
 
 
 class RejectedRoute(BaseModel):
@@ -92,7 +94,7 @@ def _parse_leg(raw: Dict[str, Any], index: int) -> Tuple[Optional[TravelLeg], Li
 
     leg = TravelLeg(
         kind=kind,
-        aws_mode=raw.get("TravelMode") or leg_type,
+        source_mode=raw.get("TravelMode") or leg_type,
         depart_at=depart_raw,
         arrive_at=arrive_raw,
         from_name=from_place.get("Name"),
@@ -161,6 +163,7 @@ def _parse_route(raw: Dict[str, Any], route_index: int, source_id: str) -> Tuple
 
     option = TravelOption(
         id=f"{source_id}:route{route_index + 1}",
+        source=SOURCE,
         mode=mode,
         depart_at=depart_at,
         arrive_at=arrive_at,

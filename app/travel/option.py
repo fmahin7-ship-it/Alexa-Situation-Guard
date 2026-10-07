@@ -21,7 +21,7 @@ TravelMode = Literal["Transit", "Car", "Walk"]
 
 class TravelLeg(BaseModel):
     kind: LegKind
-    aws_mode: str = Field(..., description="TravelMode exactly as the tool returned it")
+    source_mode: str = Field(..., description="Travel mode exactly as the source returned it")
     depart_at: str
     arrive_at: str
     from_name: Optional[str] = None
@@ -38,7 +38,7 @@ class TravelLeg(BaseModel):
 class TravelOption(BaseModel):
     id: str = Field(..., description="Where it came from, e.g. 'route_transit_alternatives:route2'")
     label: Optional[str] = Field(None, description="Short name the agent uses: A, B, C, ...")
-    source: str = "amazon-location"
+    source: str = Field(..., description="Which provider found it, e.g. 'amazon-location'")
     mode: TravelMode
     depart_at: str = Field(..., description="First leg's departure — when the journey really starts")
     arrive_at: str = Field(..., description="Last leg's arrival — when the journey really ends")

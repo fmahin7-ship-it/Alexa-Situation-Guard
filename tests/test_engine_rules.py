@@ -29,17 +29,33 @@ def _set(situation, commitment_id, **fields):
     return situation
 
 
+def _only_my_show_matters():
+    """TV evening where the goal protects only my show, so the sister's can be cancelled."""
+    tv = load_situation("tv_evening")
+    tv.goals[0].commitment_ids = ["c_me_netflix"]
+    return tv
+
+
 # --- cancelled commitments -------------------------------------------------
 
 
 def test_tv_cancelled_show_frees_the_tv():
-    tv = load_situation("tv_evening")
+    tv = _only_my_show_matters()
     assert not evaluate_situation(tv).feasible  # both want the TV 20:00-21:00
 
     _set(tv, "c_sister_prime", status="cancelled")
     result = evaluate_situation(tv)
     assert result.feasible
     assert result.broken_commitment_ids == []
+
+
+def test_tv_cancelling_a_show_the_goal_protects_frees_the_tv_but_loses_the_goal():
+    tv = _set(load_situation("tv_evening"), "c_sister_prime", status="cancelled")  # goal: BOTH watch
+    result = evaluate_situation(tv)
+    assert not result.feasible
+    assert result.reasons == [
+        "'c_sister_prime' is cancelled, so goal 'goal_watch' (Both watch our chosen shows tonight) is lost"
+    ]  # no TV clash any more — only the goal
 
 
 def test_assignment_cannot_rely_on_a_cancelled_experiment():
@@ -70,7 +86,7 @@ def test_cancelling_the_thing_a_deadline_protects_does_not_meet_it():
 
 
 def test_cancelled_commitment_with_impossible_window_is_not_reported():
-    tv = load_situation("tv_evening")
+    tv = _only_my_show_matters()
     _set(tv, "c_sister_prime", start="21:00", end="20:00", status="cancelled")
     assert evaluate_situation(tv).feasible
 
@@ -100,7 +116,7 @@ def test_tv_show_moved_to_a_time_already_past_is_rejected():
 
 
 def test_only_planned_commitments_can_be_missed():
-    tv = load_situation("tv_evening")
+    tv = _only_my_show_matters()
     tv.now = "20:30"
     _set(tv, "c_sister_prime", status="cancelled")
     assert "c_me_netflix" in evaluate_situation(tv).broken_commitment_ids  # planned, started 20:00

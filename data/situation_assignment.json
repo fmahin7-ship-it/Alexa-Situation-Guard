@@ -8,7 +8,8 @@
     {
       "id": "goal_submit",
       "description": "Submit assignment by Monday 17:00",
-      "owner_id": "me"
+      "owner_id": "me",
+      "commitment_ids": ["c_submit"]
     }
   ],
   "resources": [

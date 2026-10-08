@@ -10,7 +10,8 @@
     {
       "id": "goal_flight",
       "description": "Dad boards the 18:00 flight",
-      "owner_id": "me"
+      "owner_id": "me",
+      "commitment_ids": ["c_flight"]
     }
   ],
   "locations": [

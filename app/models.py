@@ -99,6 +99,10 @@ class Situation(BaseModel):
         None,
         description="IANA zone, e.g. Australia/Sydney. When set, every time must carry a matching offset",
     )
+    now: Optional[str] = Field(
+        None,
+        description="Moment decisions are made; planned commitments starting earlier are missed. None = no check",
+    )
     people: List[Person] = Field(default_factory=list)
     locations: List[Location] = Field(default_factory=list)
     goals: List[Goal] = Field(default_factory=list)

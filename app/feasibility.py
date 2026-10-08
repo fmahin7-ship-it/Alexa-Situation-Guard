@@ -3,6 +3,10 @@
 2.1 Dependency (requires): prerequisite end <= dependent start
 2.2 Time (optional): commitment start <= end; deadline before when present
 2.3 Resource (optional): concurrency on a resource exceeds capacity
+2.4 Now (optional): a planned commitment cannot start before situation.now
+
+Cancelled commitments are skipped by every check; anything that requires a
+cancelled commitment is broken.
 
 Times are compared as given. A situation uses one time form throughout; with a
 timezone set, every time carries the offset that zone has at that moment.
@@ -18,6 +22,13 @@ from zoneinfo import ZoneInfo, ZoneInfoNotFoundError
 from pydantic import BaseModel, Field
 
 from .models import Commitment, Constraint, Dependency, Situation
+
+CANCELLED = "cancelled"
+PLANNED = "planned"
+
+
+def _is_cancelled(commitment: Commitment) -> bool:
+    return commitment.status == CANCELLED
 
 
 class FeasibilityResult(BaseModel):
@@ -74,6 +85,9 @@ def _situation_moments(situation: Situation) -> List[Tuple[str, str, datetime]]:
         dt = _parse_moment(constraint.before)
         if dt is not None:
             moments.append((constraint.id, constraint.before, dt))
+    now = _parse_moment(situation.now)
+    if now is not None:
+        moments.append(("now", situation.now, now))
     return moments
 
 
@@ -82,6 +96,9 @@ def time_form_errors(situation: Situation) -> List[str]:
     Times with and without offsets cannot be compared. A situation must use one form;
     with a timezone set, every time needs the offset that zone has at that moment.
     """
+    if situation.now and _parse_moment(situation.now) is None:
+        return [f"Cannot parse situation now '{situation.now}'"]
+
     moments = _situation_moments(situation)
     with_offset = sorted({owner for owner, _, dt in moments if dt.tzinfo is not None})
     without_offset = sorted({owner for owner, _, dt in moments if dt.tzinfo is None})
@@ -270,7 +287,9 @@ def _check_resources(
         if resource.capacity is None:
             continue  # unknown — do not invent conflicts
 
-        users = [c for c in situation.commitments if resource.id in c.resource_ids]
+        users = [
+            c for c in situation.commitments if resource.id in c.resource_ids and not _is_cancelled(c)
+        ]
         timed: List[Tuple[Commitment, Tuple[datetime, datetime]]] = []
         missing_time = False
         for commitment in users:
@@ -338,6 +357,16 @@ def _check_dependencies(
             )
             continue
 
+        if _is_cancelled(dependent):
+            continue  # nothing needs this edge any more
+        if _is_cancelled(prerequisite):
+            broken.add(dependent.id)
+            reasons.append(
+                f"'{dependent.id}' ({dependent.action}) needs '{prerequisite.id}' "
+                f"({prerequisite.action}), which is cancelled"
+            )
+            continue
+
         ok, detail = _dependency_time_ok(dependent, prerequisite)
         if ok is None:
             unevaluated_deps.append(dep.id)
@@ -354,6 +383,8 @@ def _check_self_times(
     broken: Set[str],
 ) -> None:
     for commitment in situation.commitments:
+        if _is_cancelled(commitment):
+            continue
         ok, detail = _self_time_ok(commitment)
         if ok is None:
             continue
@@ -382,6 +413,15 @@ def _check_deadlines(
             )
             continue
 
+        if _is_cancelled(commitment):
+            # Cancelling the thing a deadline protects does not meet the deadline.
+            broken.add(commitment.id)
+            reasons.append(
+                f"'{commitment.id}' is cancelled, so deadline '{constraint.id}' "
+                f"({constraint.description}) cannot be met"
+            )
+            continue
+
         ok, detail = _deadline_ok(commitment, constraint)
         if ok is None:
             unevaluated_constraints.append(constraint.id)
@@ -392,6 +432,31 @@ def _check_deadlines(
             reasons.append(detail)
 
 
+def _check_not_in_past(
+    situation: Situation,
+    reasons: List[str],
+    broken: Set[str],
+) -> None:
+    """A planned commitment must not start before now. Date-only starts are missed only after that day."""
+    now = _parse_moment(situation.now)
+    if now is None:
+        return
+    for commitment in situation.commitments:
+        if commitment.status != PLANNED:
+            continue
+        start = _parse_moment(commitment.start)
+        if start is None:
+            continue
+        date_only = len(commitment.start.strip()) == 10
+        missed = now.date() > start.date() if date_only else start < now
+        if missed:
+            broken.add(commitment.id)
+            reasons.append(
+                f"'{commitment.id}' ({commitment.action}) starts {commitment.start}, "
+                f"but it is already {situation.now}"
+            )
+
+
 def evaluate_situation(situation: Situation) -> FeasibilityResult:
     """
     Evaluate whether the current situation is feasible.
@@ -400,6 +465,7 @@ def evaluate_situation(situation: Situation) -> FeasibilityResult:
     - dependencies when present
     - time/deadlines when times / before present
     - resources when capacity is set (None = unknown, skip)
+    - now when situation.now is set
 
     Raises ValueError when times cannot be compared (see time_form_errors).
     """
@@ -418,6 +484,7 @@ def evaluate_situation(situation: Situation) -> FeasibilityResult:
     _check_self_times(situation, reasons, broken)
     _check_deadlines(situation, commitments, reasons, broken, unevaluated_constraints)
     _check_resources(situation, reasons, broken, unevaluated_resources)
+    _check_not_in_past(situation, reasons, broken)
 
     feasible = len(broken) == 0
     affected = _goals_affected_by(situation, broken)

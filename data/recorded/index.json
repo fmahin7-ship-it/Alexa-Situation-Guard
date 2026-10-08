@@ -1,0 +1,45 @@
+{
+  "description": "What was asked to produce each recorded Amazon Location response (Central Station to Sydney Airport T1, recorded 2026-09-26). route_transit_next_departures.json is a feature experiment and is not replayed.",
+  "recordings": [
+    {
+      "file": "route_car_depart_1500.json",
+      "request": {
+        "origin": [151.2063, -33.883],
+        "destination": [151.1664, -33.9361],
+        "mode": "Car",
+        "depart_at": "2026-10-02T15:00:00+10:00",
+        "max_alternatives": 0
+      }
+    },
+    {
+      "file": "route_transit_depart_1500.json",
+      "request": {
+        "origin": [151.2063, -33.883],
+        "destination": [151.1664, -33.9361],
+        "mode": "Transit",
+        "depart_at": "2026-10-02T15:00:00+10:00",
+        "max_alternatives": 0
+      }
+    },
+    {
+      "file": "route_transit_alternatives.json",
+      "request": {
+        "origin": [151.2063, -33.883],
+        "destination": [151.1664, -33.9361],
+        "mode": "Transit",
+        "depart_at": "2026-10-02T15:00:00+10:00",
+        "max_alternatives": 2
+      }
+    },
+    {
+      "file": "route_transit_arrive_by_1600.json",
+      "request": {
+        "origin": [151.2063, -33.883],
+        "destination": [151.1664, -33.9361],
+        "mode": "Transit",
+        "arrive_by": "2026-10-02T16:00:00+10:00",
+        "max_alternatives": 0
+      }
+    }
+  ]
+}

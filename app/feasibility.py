@@ -4,6 +4,7 @@
 2.2 Time (optional): commitment start <= end; deadline before when present
 2.3 Resource (optional): concurrency on a resource exceeds capacity
 2.4 Now (optional): a planned commitment cannot start before situation.now
+2.5 Goals (optional): a goal is lost when a commitment it protects is cancelled
 
 Cancelled commitments are skipped by every check; anything that requires a
 cancelled commitment is broken.
@@ -146,9 +147,23 @@ def location_reference_errors(situation: Situation) -> List[str]:
     return errors
 
 
+def goal_reference_errors(situation: Situation) -> List[str]:
+    known = {c.id for c in situation.commitments}
+    return [
+        f"Goal '{goal.id}' references unknown commitment '{ref}'"
+        for goal in situation.goals
+        for ref in goal.commitment_ids
+        if ref not in known
+    ]
+
+
 def situation_errors(situation: Situation) -> List[str]:
     """Structural problems that make a situation unfit to evaluate."""
-    return time_form_errors(situation) + location_reference_errors(situation)
+    return (
+        time_form_errors(situation)
+        + location_reference_errors(situation)
+        + goal_reference_errors(situation)
+    )
 
 
 def _window(commitment: Commitment) -> WindowResult:
@@ -330,12 +345,73 @@ def _check_resources(
             )
 
 
+def find_affected_commitment_ids(
+    situation: Situation, seed_ids: Set[str]
+) -> List[str]:
+    """
+    Blast radius: seed commitments plus transitive dependents.
+
+    Dependency model: from_id depends on to_id (requires).
+    If to_id changes, from_id is affected.
+    """
+    if not seed_ids:
+        return []
+
+    dependents: Dict[str, List[str]] = {}
+    for dep in situation.dependencies:
+        if dep.kind != "requires":
+            continue
+        dependents.setdefault(dep.to_id, []).append(dep.from_id)
+
+    affected: Set[str] = set(seed_ids)
+    queue = list(seed_ids)
+    while queue:
+        node = queue.pop()
+        for dependent in dependents.get(node, []):
+            if dependent not in affected:
+                affected.add(dependent)
+                queue.append(dependent)
+
+    return sorted(affected)
+
+
 def _goals_affected_by(
     situation: Situation, broken_commitment_ids: Set[str]
 ) -> List[str]:
+    """
+    A linked goal is affected when one of its commitments is broken or depends
+    (directly or not) on something broken. An unlinked goal cannot be traced,
+    so it counts as affected whenever anything is broken.
+    """
     if not broken_commitment_ids:
         return []
-    return [g.id for g in situation.goals] if situation.goals else sorted(broken_commitment_ids)
+    if not situation.goals:
+        return sorted(broken_commitment_ids)
+
+    at_risk = set(find_affected_commitment_ids(situation, broken_commitment_ids))
+    return [
+        g.id
+        for g in situation.goals
+        if not g.commitment_ids or at_risk & set(g.commitment_ids)
+    ]
+
+
+def _check_goals(
+    situation: Situation,
+    commitments: Dict[str, Commitment],
+    reasons: List[str],
+    broken: Set[str],
+) -> None:
+    """Cancelling a commitment a goal protects loses that goal."""
+    for goal in situation.goals:
+        for commitment_id in goal.commitment_ids:
+            commitment = commitments.get(commitment_id)
+            if commitment is not None and _is_cancelled(commitment):
+                broken.add(commitment.id)
+                reasons.append(
+                    f"'{commitment.id}' is cancelled, so goal '{goal.id}' "
+                    f"({goal.description}) is lost"
+                )
 
 
 def _check_dependencies(
@@ -485,6 +561,7 @@ def evaluate_situation(situation: Situation) -> FeasibilityResult:
     _check_deadlines(situation, commitments, reasons, broken, unevaluated_constraints)
     _check_resources(situation, reasons, broken, unevaluated_resources)
     _check_not_in_past(situation, reasons, broken)
+    _check_goals(situation, commitments, reasons, broken)
 
     feasible = len(broken) == 0
     affected = _goals_affected_by(situation, broken)

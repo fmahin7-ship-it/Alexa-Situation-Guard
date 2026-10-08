@@ -16,6 +16,10 @@ class Goal(BaseModel):
     id: str
     description: str
     owner_id: Optional[str] = None
+    commitment_ids: List[str] = Field(
+        default_factory=list,
+        description="Commitments this goal protects; cancelling one loses the goal. Empty = unlinked",
+    )
 
 
 class Location(BaseModel):

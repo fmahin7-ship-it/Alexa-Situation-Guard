@@ -9,7 +9,8 @@
     {
       "id": "goal_watch",
       "description": "Both watch our chosen shows tonight",
-      "owner_id": null
+      "owner_id": null,
+      "commitment_ids": ["c_me_netflix", "c_sister_prime"]
     }
   ],
   "resources": [

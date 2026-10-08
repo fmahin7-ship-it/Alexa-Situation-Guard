@@ -9,12 +9,12 @@ Unknown effects: do not invent mutations; report unevaluated.
 from __future__ import annotations
 
 from datetime import timedelta
-from typing import Dict, List, Optional, Set
+from typing import Dict, List, Optional
 from zoneinfo import ZoneInfo
 
 from pydantic import BaseModel, Field
 
-from .feasibility import evaluate_situation, _parse_moment
+from .feasibility import evaluate_situation, find_affected_commitment_ids, _parse_moment
 from .models import Commitment, Event, Situation
 
 
@@ -120,36 +120,6 @@ def apply_event(situation: Situation, event: Event) -> tuple[Situation, List[str
         return updated, [], False, notes
 
     return updated, changed, True, notes
-
-
-def find_affected_commitment_ids(
-    situation: Situation, seed_ids: Set[str]
-) -> List[str]:
-    """
-    Blast radius: seed commitments plus transitive dependents.
-
-    Dependency model: from_id depends on to_id (requires).
-    If to_id changes, from_id is affected.
-    """
-    if not seed_ids:
-        return []
-
-    dependents: Dict[str, List[str]] = {}
-    for dep in situation.dependencies:
-        if dep.kind != "requires":
-            continue
-        dependents.setdefault(dep.to_id, []).append(dep.from_id)
-
-    affected: Set[str] = set(seed_ids)
-    queue = list(seed_ids)
-    while queue:
-        node = queue.pop()
-        for dependent in dependents.get(node, []):
-            if dependent not in affected:
-                affected.add(dependent)
-                queue.append(dependent)
-
-    return sorted(affected)
 
 
 def evaluate_impact(situation: Situation, event: Event) -> ImpactResult:

@@ -3,4 +3,5 @@ uvicorn
 pydantic
 tzdata
 boto3
+mcp
 pytest

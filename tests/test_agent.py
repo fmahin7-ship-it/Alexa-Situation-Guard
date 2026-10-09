@@ -75,6 +75,20 @@ def test_scripted_alexa_confirms_only_after_the_user_agrees(tmp_path):
     assert statuses["c_train"] == "cancelled" and statuses["c_travel_D"] == "planned"
 
 
+def test_status_question_after_a_change_only_reads_and_never_reports_the_change_again(tmp_path):
+    (first, second), store = _conversation(
+        tmp_path,
+        ScriptedProvider(guided_policy()),
+        ["My train is running 45 minutes late.", "What is my current plan?"],
+    )
+    assert [s.tool for s in second.steps] == ["get_situation"]
+    assert "Dad boards the 18:00 flight" in second.reply
+
+    train = next(c for c in store.load(TRIP).situation.commitments if c.id == "c_train")
+    assert (train.start, train.end) == ("2026-10-02T15:45:00+10:00", "2026-10-02T16:30:00+10:00")  # 45 min, not 90
+    assert [e.kind for e in store.load(TRIP).log].count("change_reported") == 1
+
+
 def test_scripted_alexa_reports_honestly_when_nothing_works(tmp_path):
     scenario = load_scenario().model_copy(update={"search_after": "2026-10-02T15:00:00+10:00"})
     late = scenario.model_copy(update={"change": scenario.change.model_copy(update={"observed_at": "2026-10-02T15:40:00+10:00"})})

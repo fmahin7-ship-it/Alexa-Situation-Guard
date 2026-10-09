@@ -115,7 +115,7 @@ def guided_policy(scenario: Optional[DemoScenario] = None) -> Policy:
             label = _recommended_label(messages)
             if label and _CONFIRM.search(last.text):
                 return _call("confirm_option", step, situation_id=sid, label=label)
-            if _STATUS.search(last.text) and not _results(messages):
+            if _STATUS.search(last.text):
                 return _call("get_situation", step, situation_id=sid)
             change = scenario.change
             args: Dict[str, Any] = dict(

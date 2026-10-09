@@ -51,6 +51,18 @@ class TravelOption(BaseModel):
     assumptions: List[str] = Field(default_factory=list)
 
 
+class RejectedRoute(BaseModel):
+    """A route the provider returned that could not be turned into a TravelOption, and why."""
+
+    route_index: int
+    reasons: List[str] = Field(default_factory=list)
+
+
+class RouteParseResult(BaseModel):
+    options: List[TravelOption] = Field(default_factory=list)
+    rejected: List[RejectedRoute] = Field(default_factory=list)
+
+
 def _clock(value: str) -> str:
     return datetime.fromisoformat(value).strftime("%H:%M")
 

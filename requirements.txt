@@ -2,4 +2,5 @@ fastapi
 uvicorn
 pydantic
 tzdata
+boto3
 pytest

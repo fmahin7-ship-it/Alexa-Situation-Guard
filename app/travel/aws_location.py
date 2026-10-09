@@ -1,7 +1,10 @@
-"""Amazon Location (geo-routes CalculateRoutes) response -> TravelOption[].
+"""Amazon Location (geo-routes CalculateRoutes) <-> TravelRequest / TravelOption[].
 
-This is the only module that knows the AWS response shape. The live
-travel_search will call AWS and hand the response to the same parser.
+This is the only module that knows the AWS request and response shapes.
+AmazonLocationProvider calls AWS live; recordings go through the same parser.
+
+Credentials come from the AWS profile named by SITUATION_GUARD_AWS_PROFILE
+(default "situation-guard"), never from the repository.
 
 Shape this relies on (seen in data/recorded/):
   Routes[].Summary            {Distance, Duration}    Duration excludes waits between legs
@@ -18,12 +21,15 @@ NextDepartures is ignored: it has departure times but no arrivals.
 
 from __future__ import annotations
 
+import os
 from datetime import datetime
-from typing import Any, Dict, List, Optional, Tuple
+from typing import TYPE_CHECKING, Any, Dict, List, Optional, Tuple
 
-from pydantic import BaseModel, Field
+from .option import LegKind, RejectedRoute, RouteParseResult, TravelLeg, TravelOption, TravelMode
+from .search import TravelSearchError
 
-from .option import LegKind, TravelLeg, TravelOption, TravelMode
+if TYPE_CHECKING:
+    from .search import TravelRequest
 
 _LEG_KINDS: Dict[str, LegKind] = {
     "Pedestrian": "walk",
@@ -34,16 +40,6 @@ _LEG_KINDS: Dict[str, LegKind] = {
 SOURCE = "amazon-location"
 
 CAR_TRAFFIC_ASSUMPTION ="Car times assume expected traffic; best_case_seconds is the no-traffic duration"
-
-
-class RejectedRoute(BaseModel):
-    route_index: int
-    reasons: List[str] = Field(default_factory=list)
-
-
-class RouteParseResult(BaseModel):
-    options: List[TravelOption] = Field(default_factory=list)
-    rejected: List[RejectedRoute] = Field(default_factory=list)
 
 
 def _parse_time(value: Any) -> Optional[datetime]:
@@ -198,3 +194,73 @@ def parse_calculate_routes(response: Dict[str, Any], source_id: str) -> RoutePar
         else:
             result.options.append(option)
     return result
+
+
+# --- live calls --------------------------------------------------------------
+
+PROFILE_ENV = "SITUATION_GUARD_AWS_PROFILE"
+REGION_ENV = "SITUATION_GUARD_AWS_REGION"
+DEFAULT_PROFILE = "situation-guard"
+DEFAULT_REGION = "ap-southeast-2"
+
+_AWS_TRAVEL_MODES = {"Transit": "Transit", "Car": "Car", "Walk": "Pedestrian"}
+
+
+def calculate_routes_params(request: "TravelRequest") -> Dict[str, Any]:
+    """The exact CalculateRoutes parameters for a request."""
+    params: Dict[str, Any] = {
+        "Origin": list(request.origin),
+        "Destination": list(request.destination),
+        "TravelMode": _AWS_TRAVEL_MODES[request.mode],
+        "LegAdditionalFeatures": ["Summary"],
+    }
+    if request.depart_at:
+        params["DepartureTime"] = request.depart_at
+    else:
+        params["ArrivalTime"] = request.arrive_by
+    if request.max_alternatives:
+        params["MaxAlternatives"] = request.max_alternatives
+    return params
+
+
+def _source_id(request: "TravelRequest") -> str:
+    when = f"depart-{request.depart_at}" if request.depart_at else f"arrive-{request.arrive_by}"
+    return f"amazon-location:{request.mode.lower()}:{when}"
+
+
+class AmazonLocationProvider:
+    """Live Amazon Location routes. Every search is one billed CalculateRoutes request."""
+
+    name = SOURCE
+    live = True
+
+    def __init__(self, client: Any = None, profile: Optional[str] = None, region: Optional[str] = None):
+        self._client = client
+        self._profile = profile or os.environ.get(PROFILE_ENV, DEFAULT_PROFILE)
+        self._region = region or os.environ.get(REGION_ENV, DEFAULT_REGION)
+
+    def _get_client(self) -> Any:
+        if self._client is None:
+            import boto3
+            from botocore.exceptions import ProfileNotFound
+
+            try:
+                session = boto3.Session(profile_name=self._profile, region_name=self._region)
+            except ProfileNotFound as exc:
+                raise TravelSearchError(
+                    f"AWS profile '{self._profile}' not found. Run: aws configure --profile {self._profile} "
+                    f"(or set {PROFILE_ENV})"
+                ) from exc
+            self._client = session.client("geo-routes")
+        return self._client
+
+    def search(self, request: "TravelRequest") -> RouteParseResult:
+        from botocore.exceptions import BotoCoreError, ClientError
+
+        client = self._get_client()
+        try:
+            response = client.calculate_routes(**calculate_routes_params(request))
+        except (BotoCoreError, ClientError) as exc:
+            raise TravelSearchError(f"Amazon Location could not answer ({request.describe()}): {exc}") from exc
+        response.pop("ResponseMetadata", None)
+        return parse_calculate_routes(response, _source_id(request))

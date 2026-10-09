@@ -1,0 +1,10 @@
+{
+  "situation_id": "travel_friday",
+  "change": {
+    "commitment_id": "c_train",
+    "kind": "delay",
+    "minutes": 45,
+    "observed_at": "2026-10-02T15:05:00+10:00"
+  },
+  "search_after": "2026-10-02T15:00:00+10:00"
+}

@@ -1,15 +1,29 @@
-"""Situation State + feasibility + event impact API."""
+"""Situation State + feasibility + event impact API, plus the MCP server at /mcp."""
 
 from __future__ import annotations
+
+from contextlib import asynccontextmanager
 
 from fastapi import FastAPI, HTTPException
 
 from .engine import describe_situation, list_situation_ids, load_all_situations, load_situation
 from .feasibility import FeasibilityResult, evaluate_situation
 from .impact import ImpactResult, evaluate_impact
+from .mcp_server import mcp_server
 from .models import Event, Situation
 
-app = FastAPI(title="Commitment Graph — Event Impact")
+
+@asynccontextmanager
+async def lifespan(_: FastAPI):
+    async with mcp_server.session_manager.run():
+        yield
+
+
+app = FastAPI(title="Commitment Graph — Event Impact", lifespan=lifespan)
+
+# MCP over Streamable HTTP at /mcp (one URL; all tools are called through it).
+_mcp_app = mcp_server.streamable_http_app(streamable_http_path="/mcp")
+app.router.routes.extend(_mcp_app.routes)
 
 
 @app.get("/health")

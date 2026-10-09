@@ -1,7 +1,8 @@
 """Event → Apply → Impact → Feasibility (layer around the existing verifier).
 
-One concrete effect for now:
-  meta.delay_minutes → shift related commitment start/end by that many minutes.
+Known effects:
+  type "cancelled"   → mark related commitments cancelled
+  meta.delay_minutes → shift related commitment start/end by that many minutes
 
 Unknown effects: do not invent mutations; report unevaluated.
 """
@@ -14,8 +15,10 @@ from zoneinfo import ZoneInfo
 
 from pydantic import BaseModel, Field
 
-from .feasibility import evaluate_situation, find_affected_commitment_ids, _parse_moment
+from .feasibility import CANCELLED, evaluate_situation, find_affected_commitment_ids, _parse_moment
 from .models import Commitment, Event, Situation
+
+CANCELLED_EVENT = "cancelled"
 
 
 class ImpactResult(BaseModel):
@@ -72,19 +75,22 @@ def apply_event(situation: Situation, event: Event) -> tuple[Situation, List[str
     if event.id not in {e.id for e in updated.events}:
         updated.events.append(event)
 
-    if "delay_minutes" not in event.meta:
-        notes.append(
-            f"Event '{event.id}' has no known effect (expected meta.delay_minutes) — not applied"
-        )
-        return updated, [], False, notes
-
-    try:
-        delay = int(event.meta["delay_minutes"])
-    except (TypeError, ValueError):
-        notes.append(
-            f"Event '{event.id}' has unusable delay_minutes={event.meta.get('delay_minutes')!r} — not applied"
-        )
-        return updated, [], False, notes
+    cancelling = event.type == CANCELLED_EVENT
+    delay = 0
+    if not cancelling:
+        if "delay_minutes" not in event.meta:
+            notes.append(
+                f"Event '{event.id}' has no known effect "
+                f"(expected type '{CANCELLED_EVENT}' or meta.delay_minutes) — not applied"
+            )
+            return updated, [], False, notes
+        try:
+            delay = int(event.meta["delay_minutes"])
+        except (TypeError, ValueError):
+            notes.append(
+                f"Event '{event.id}' has unusable delay_minutes={event.meta.get('delay_minutes')!r} — not applied"
+            )
+            return updated, [], False, notes
 
     commitments = _commitment_map(updated)
     changed: List[str] = []
@@ -93,21 +99,22 @@ def apply_event(situation: Situation, event: Event) -> tuple[Situation, List[str
     for related_id in event.related_ids:
         commitment = commitments.get(related_id)
         if commitment is None:
-            notes.append(
-                f"related_id '{related_id}' is not a commitment — skipped for time shift"
-            )
+            notes.append(f"related_id '{related_id}' is not a commitment — skipped")
             continue
 
-        before_start, before_end = commitment.start, commitment.end
-        if commitment.start:
-            commitment.start = _shift_moment(commitment.start, delay, zone)
-        if commitment.end:
-            commitment.end = _shift_moment(commitment.end, delay, zone)
+        before = (commitment.start, commitment.end, commitment.status)
+        if cancelling:
+            commitment.status = CANCELLED
+        else:
+            if commitment.start:
+                commitment.start = _shift_moment(commitment.start, delay, zone)
+            if commitment.end:
+                commitment.end = _shift_moment(commitment.end, delay, zone)
 
-        if commitment.start != before_start or commitment.end != before_end or delay == 0:
-            # delay==0 still counts as applied to a known related commitment
-            if related_id not in changed:
-                changed.append(related_id)
+        after = (commitment.start, commitment.end, commitment.status)
+        # A 0-minute delay or a repeat cancellation still counts as applied to a known commitment.
+        if (after != before or cancelling or delay == 0) and related_id not in changed:
+            changed.append(related_id)
 
     if not changed and event.related_ids:
         notes.append(

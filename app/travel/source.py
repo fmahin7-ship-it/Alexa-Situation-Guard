@@ -68,6 +68,7 @@ class TravelSource:
                 notes.append(str(exc))
                 continue
             found.append(result.options)
+            notes.extend(result.notes)
             notes.extend(
                 f"{request.describe()}: route {r.route_index + 1} unusable ({'; '.join(r.reasons)})"
                 for r in result.rejected

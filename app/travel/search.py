@@ -84,6 +84,7 @@ class TravelSearchResult(BaseModel):
     live: bool = Field(..., description="False when the answer is a replayed recording")
     options: List[TravelOption] = Field(default_factory=list)
     rejected: List[RejectedRoute] = Field(default_factory=list)
+    notes: List[str] = Field(default_factory=list)
 
 
 def make_travel_provider() -> TravelProvider:
@@ -109,4 +110,5 @@ def travel_search(request: TravelRequest, provider: Optional[TravelProvider] = N
         live=provider.live,
         options=found.options,
         rejected=found.rejected,
+        notes=found.notes,
     )

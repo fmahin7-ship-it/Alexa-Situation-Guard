@@ -15,8 +15,10 @@ from typing import Any, Dict, List, Optional
 from .llm import LLMError, LLMReply, Message, ToolCall, ToolSpec, Usage
 
 MODEL_ENV = "SITUATION_GUARD_OPENAI_MODEL"
-DEFAULT_MODEL = "gpt-5-mini"
+DEFAULT_MODEL = "gpt-5-mini"  # some newer models (e.g. GPT-6 Astra, GPT-6.1 Sol) do not support tools on Chat Completions
 KEY_ENV = "OPENAI_API_KEY"
+REASONING_ENV = "SITUATION_GUARD_OPENAI_REASONING"
+DEFAULT_REASONING = "low"  # supported values are model-dependent; "none" = do not send the setting
 
 # Reasoning models spend part of this budget thinking before they answer;
 # too small a cap returns an empty reply.
@@ -49,7 +51,12 @@ def _to_openai_messages(system: str, messages: List[Message]) -> List[Dict[str, 
 
 
 def chat_request(
-    model: str, system: str, messages: List[Message], tools: List[ToolSpec], max_completion_tokens: int
+    model: str,
+    system: str,
+    messages: List[Message],
+    tools: List[ToolSpec],
+    max_completion_tokens: int,
+    reasoning_effort: Optional[str] = None,
 ) -> Dict[str, Any]:
     """The exact Chat Completions parameters for one turn."""
     request: Dict[str, Any] = {
@@ -57,6 +64,8 @@ def chat_request(
         "messages": _to_openai_messages(system, messages),
         "max_completion_tokens": max_completion_tokens,
     }
+    if reasoning_effort:
+        request["reasoning_effort"] = reasoning_effort
     if tools:
         request["tools"] = [
             {
@@ -98,8 +107,11 @@ class OpenAIChatProvider:
         client: Any = None,
         model: Optional[str] = None,
         max_completion_tokens: int = DEFAULT_MAX_COMPLETION_TOKENS,
+        reasoning_effort: Optional[str] = None,
     ):
         self.model = model or os.environ.get(MODEL_ENV, DEFAULT_MODEL)
+        effort = (reasoning_effort or os.environ.get(REASONING_ENV, DEFAULT_REASONING)).strip().lower()
+        self.reasoning_effort = None if effort == "none" else effort
         self.name = f"openai:{self.model}"
         self._client = client
         self._max_completion_tokens = max_completion_tokens
@@ -116,7 +128,9 @@ class OpenAIChatProvider:
     def reply(self, system: str, messages: List[Message], tools: List[ToolSpec]) -> LLMReply:
         import openai
 
-        request = chat_request(self.model, system, messages, tools, self._max_completion_tokens)
+        request = chat_request(
+            self.model, system, messages, tools, self._max_completion_tokens, self.reasoning_effort
+        )
         try:
             response = self._get_client().chat.completions.create(**request)
         except openai.OpenAIError as exc:

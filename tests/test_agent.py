@@ -99,7 +99,7 @@ def test_scripted_alexa_reports_honestly_when_nothing_works(tmp_path):
 
 def test_tool_errors_are_reported_not_crashed(tmp_path):
     scenario = load_scenario()
-    no_recording = scenario.model_copy(update={"search_after": None})  # searches from 15:05: not recorded
+    no_recording = scenario.model_copy(update={"search_after": "2026-10-02T17:00:00+10:00"})  # nothing recorded near 17:00
     (turn,), _ = _conversation(tmp_path, ScriptedProvider(guided_policy(no_recording)), ["Train is late."])
     assert turn.steps[-1].tool == "find_options" and turn.steps[-1].is_error
     assert turn.reply.startswith("Sorry, I couldn't do that") and "No recording" in turn.reply

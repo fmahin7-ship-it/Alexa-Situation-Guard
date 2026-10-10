@@ -184,10 +184,32 @@ def test_errors_are_clear_and_save_nothing(session, tmp_path):
     assert list(tmp_path.iterdir()) == []
 
 
-def test_search_time_without_a_recording_is_reported_honestly(session):
+def test_search_from_now_replays_the_closest_earlier_recording_and_says_so(session):
     _delay_train(session)  # now = 15:05; only 15:00 searches were recorded
+    found = session.call("find_options", situation_id=TRIP, commitment_id="c_train")
+    assert found["live"] is False
+    assert [o["label"] for o in found["options"]] == ["A", "B", "C", "D"]
+    assert any("closest earlier recorded search (2026-10-02T15:00:00+10:00)" in n for n in found["notes"])
+    # The engine still decides: anything leaving before 15:05 is rejected.
+    assert session.call("try_option", situation_id=TRIP, label="A")["feasible"] is False
+    assert session.call("try_option", situation_id=TRIP, label="D")["feasible"] is True
+
+
+def test_search_with_no_recording_near_that_time_is_reported_honestly(session):
+    _delay_train(session)
     with pytest.raises(ToolFailed, match="No recording"):
-        session.call("find_options", situation_id=TRIP, commitment_id="c_train")
+        session.call("find_options", situation_id=TRIP, commitment_id="c_train", after="2026-10-02T17:00:00+10:00")
+
+
+def test_mcp_hints_tell_clients_which_tools_are_safe(session):
+    async def tools():
+        async with Client(session.server) as client:
+            return {t.name: t.annotations for t in (await client.list_tools()).tools}
+
+    hints = asyncio.run(tools())
+    assert hints["list_situations"].read_only_hint is True
+    assert hints["get_situation"].read_only_hint is True
+    assert hints["confirm_option"].destructive_hint is True
 
 
 # --- generic: tools do not care what domain the options come from ----------

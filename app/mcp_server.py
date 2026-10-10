@@ -17,6 +17,7 @@ from typing import List, Literal, Optional, Sequence
 
 from mcp.server.mcpserver import MCPServer
 from mcp.server.mcpserver.exceptions import ToolError
+from mcp_types import ToolAnnotations
 from pydantic import BaseModel, Field
 
 from .candidate import apply_edits, simulate
@@ -178,7 +179,7 @@ def build_server(
     sources = list(sources) if sources is not None else [TravelSource()]
     server = MCPServer(name="situation-guard", version="0.1.0", instructions=INSTRUCTIONS)
 
-    @server.tool()
+    @server.tool(annotations=ToolAnnotations(read_only_hint=True))
     def list_situations() -> List[SituationBrief]:
         """List the situations being guarded, with their current time and whether they still work."""
         briefs = []
@@ -189,7 +190,7 @@ def build_server(
             )
         return briefs
 
-    @server.tool()
+    @server.tool(annotations=ToolAnnotations(read_only_hint=True))
     def get_situation(situation_id: str) -> SituationView:
         """Current plan: commitments, goals at risk, the engine's reasons, and any options on offer."""
         return _situation_view(_load(store, situation_id))
@@ -312,7 +313,7 @@ def build_server(
             reasons=result.reasons,
         )
 
-    @server.tool()
+    @server.tool(annotations=ToolAnnotations(destructive_hint=True, idempotent_hint=False))
     def confirm_option(situation_id: str, label: str) -> ConfirmView:
         """
         Make an option the plan. The engine checks it again first and refuses if it does not work.

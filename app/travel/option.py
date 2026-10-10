@@ -61,6 +61,7 @@ class RejectedRoute(BaseModel):
 class RouteParseResult(BaseModel):
     options: List[TravelOption] = Field(default_factory=list)
     rejected: List[RejectedRoute] = Field(default_factory=list)
+    notes: List[str] = Field(default_factory=list, description="Anything the caller must know, e.g. a substituted recording")
 
 
 def _clock(value: str) -> str:

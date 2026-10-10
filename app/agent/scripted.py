@@ -22,10 +22,10 @@ from typing import Any, Callable, Dict, List, Optional
 from pydantic import BaseModel
 
 from .llm import LLMReply, Message, ToolCall, ToolResult, ToolSpec
+from .loop import is_approval
 
 DEMO_DIR = Path(__file__).resolve().parent.parent.parent / "data" / "demo"
 
-_CONFIRM = re.compile(r"\b(yes|yeah|yep|confirm|do it|go ahead|book it|sounds good|ok(ay)?)\b", re.I)
 _STATUS = re.compile(r"\b(status|plan|how am i|what('?s| is) (my|the))\b", re.I)
 
 
@@ -113,7 +113,7 @@ def guided_policy(scenario: Optional[DemoScenario] = None) -> Policy:
         # A new user utterance starts the flow.
         if last.role == "user" and last.text is not None:
             label = _recommended_label(messages)
-            if label and _CONFIRM.search(last.text):
+            if label and is_approval(last.text):
                 return _call("confirm_option", step, situation_id=sid, label=label)
             if _STATUS.search(last.text):
                 return _call("get_situation", step, situation_id=sid)

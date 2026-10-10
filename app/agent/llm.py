@@ -19,7 +19,7 @@ from typing import Any, Dict, List, Literal, Optional, Protocol
 
 from pydantic import BaseModel, Field
 
-LLM_ENV = "SITUATION_GUARD_LLM"
+LLM_ENV = "openai"
 
 
 class LLMError(Exception):

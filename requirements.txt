@@ -4,4 +4,6 @@ pydantic
 tzdata
 boto3
 mcp
+openai
+python-dotenv
 pytest

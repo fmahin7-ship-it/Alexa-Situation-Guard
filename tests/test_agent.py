@@ -239,15 +239,15 @@ def test_real_client_makes_only_one_attempt():
 
 def test_default_llm_is_scripted_so_nothing_costs_money(monkeypatch):
     monkeypatch.delenv(LLM_ENV, raising=False)
-    assert make_llm_provider().live is False
+    assert make_llm_provider(use_dotenv=False).live is False
 
 
 def test_bedrock_only_when_asked(monkeypatch):
     monkeypatch.setenv(LLM_ENV, "bedrock")
-    assert isinstance(make_llm_provider(), BedrockConverseProvider)  # created, not called
+    assert isinstance(make_llm_provider(use_dotenv=False), BedrockConverseProvider)  # created, not called
 
 
 def test_unknown_llm_setting_is_an_error(monkeypatch):
-    monkeypatch.setenv(LLM_ENV, "openai")
-    with pytest.raises(LLMError, match="'scripted' or 'bedrock'"):
-        make_llm_provider()
+    monkeypatch.setenv(LLM_ENV, "gemini")
+    with pytest.raises(LLMError, match="'scripted', 'bedrock' or 'openai'"):
+        make_llm_provider(use_dotenv=False)

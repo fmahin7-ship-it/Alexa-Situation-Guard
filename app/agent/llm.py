@@ -5,6 +5,9 @@ tools, get back text and/or tool calls. Which model answers is a setting:
 
     SITUATION_GUARD_LLM=scripted   (default) rule-based stand-in, free, offline
     SITUATION_GUARD_LLM=bedrock    Amazon Bedrock Converse (billed per token)
+    SITUATION_GUARD_LLM=openai     OpenAI Chat Completions (billed per token)
+
+Settings and OPENAI_API_KEY may also come from a gitignored .env file.
 
 The LLM never decides whether a plan works — the engine does, through the tools.
 """
@@ -16,7 +19,7 @@ from typing import Any, Dict, List, Literal, Optional, Protocol
 
 from pydantic import BaseModel, Field
 
-LLM_ENV = "SITUATION_GUARD_LLM"
+LLM_ENV = "openai"
 
 
 class LLMError(Exception):
@@ -71,8 +74,12 @@ class LLMProvider(Protocol):
         ...
 
 
-def make_llm_provider() -> LLMProvider:
-    """scripted (default, free) or bedrock (live, billed)."""
+def make_llm_provider(use_dotenv: bool = True) -> LLMProvider:
+    """scripted (default, free), bedrock or openai (live, billed)."""
+    if use_dotenv:
+        from dotenv import load_dotenv
+
+        load_dotenv(override=False)  # a real environment variable always wins over .env
     choice = os.environ.get(LLM_ENV, "scripted").strip().lower()
     if choice == "scripted":
         from .scripted import ScriptedProvider, guided_policy
@@ -82,4 +89,8 @@ def make_llm_provider() -> LLMProvider:
         from .bedrock import BedrockConverseProvider
 
         return BedrockConverseProvider()
-    raise LLMError(f"{LLM_ENV} must be 'scripted' or 'bedrock', not '{choice}'")
+    if choice == "openai":
+        from .openai_provider import OpenAIChatProvider
+
+        return OpenAIChatProvider()
+    raise LLMError(f"{LLM_ENV} must be 'scripted', 'bedrock' or 'openai', not '{choice}'")

@@ -7,10 +7,14 @@ from contextlib import asynccontextmanager
 from fastapi import FastAPI
 from fastapi.staticfiles import StaticFiles
 
-from app.mcp.server import mcp_server
-from app.paths import STATIC_DIR
-from app.web.api import router as demo_router
-from app.web.situations_api import router as situations_router
+from app.settings import load_settings
+
+load_settings()  # before the MCP server below chooses its providers
+
+from app.mcp.server import mcp_server  # noqa: E402
+from app.paths import STATIC_DIR  # noqa: E402
+from app.web.api import router as demo_router  # noqa: E402
+from app.web.situations_api import router as situations_router  # noqa: E402
 
 
 @asynccontextmanager

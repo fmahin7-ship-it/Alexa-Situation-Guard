@@ -10,8 +10,8 @@ from zoneinfo import ZoneInfo
 
 import pytest
 
-from app.travel.aws_location import CAR_TRAFFIC_ASSUMPTION, parse_calculate_routes
-from app.travel.option import describe_option, merge_options
+from app.options.travel.aws_location import CAR_TRAFFIC_ASSUMPTION, parse_calculate_routes
+from app.options.travel.option import describe_option, merge_options
 
 RECORDED = Path(__file__).resolve().parent.parent / "data" / "recorded"
 

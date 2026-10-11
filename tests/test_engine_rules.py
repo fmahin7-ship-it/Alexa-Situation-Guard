@@ -7,16 +7,16 @@ from pathlib import Path
 
 import pytest
 
-from app.candidate import Candidate, UpdateCommitment, simulate
-from app.choice import ChoiceProposer
-from app.engine import load_situation
-from app.feasibility import evaluate_situation
-from app.impact import apply_event
-from app.models import Event
-from app.recovery import recover
-from app.travel.aws_location import parse_calculate_routes
-from app.travel.option import merge_options
-from app.travel.to_candidate import travel_option_to_choice
+from app.core.candidate import Candidate, UpdateCommitment, simulate
+from app.options.choice import ChoiceProposer
+from app.situations.fixtures import load_situation
+from app.core.feasibility import evaluate_situation
+from app.core.impact import apply_event
+from app.core.models import Event
+from app.core.recovery import recover
+from app.options.travel.aws_location import parse_calculate_routes
+from app.options.travel.option import merge_options
+from app.options.travel.to_candidate import travel_option_to_choice
 
 RECORDED = Path(__file__).resolve().parent.parent / "data" / "recorded"
 

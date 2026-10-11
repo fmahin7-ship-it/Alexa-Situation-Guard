@@ -14,14 +14,15 @@ import pytest
 from botocore.stub import Stubber
 from mcp import Client
 
-from app.agent.bedrock import BedrockConverseProvider, _simplify_schema, converse_request
+from app.agent.providers.bedrock_converse import BedrockConverseProvider, _simplify_schema, converse_request
 from app.agent.llm import LLM_ENV, LLMError, LLMReply, Message, ToolCall, ToolResult, ToolSpec, Usage, make_llm_provider
-from app.agent.loop import McpToolRunner, run_turn
-from app.agent.scripted import ScriptedProvider, guided_policy, load_scenario
-from app.mcp_server import build_server
-from app.store import SituationStore
-from app.travel.recorded import RecordedProvider
-from app.travel.source import TravelSource
+from app.agent.loop import run_turn
+from app.agent.tool_runner import McpToolRunner
+from app.agent.providers.scripted import ScriptedProvider, guided_policy, load_scenario
+from app.mcp.server import build_server
+from app.situations.store import SituationStore
+from app.options.travel.recorded import RecordedProvider
+from app.options.travel.source import TravelSource
 
 TRIP = "travel_friday"
 

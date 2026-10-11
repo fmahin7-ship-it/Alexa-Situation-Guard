@@ -2,11 +2,11 @@
 
 from __future__ import annotations
 
-from app.candidate import Candidate, UpdateCommitment, simulate
-from app.engine import load_situation
-from app.feasibility import evaluate_situation, situation_errors
-from app.impact import apply_event
-from app.models import Event, Goal
+from app.core.candidate import Candidate, UpdateCommitment, simulate
+from app.situations.fixtures import load_situation
+from app.core.feasibility import evaluate_situation, situation_errors
+from app.core.impact import apply_event
+from app.core.models import Event, Goal
 
 
 def _set(situation, commitment_id, **fields):

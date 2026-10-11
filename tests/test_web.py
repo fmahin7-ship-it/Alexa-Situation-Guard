@@ -8,12 +8,12 @@ import pytest
 from fastapi.testclient import TestClient
 from mcp import Client
 
-from app.agent.scripted import ScriptedProvider, guided_policy
+from app.agent.providers.scripted import ScriptedProvider, guided_policy
 from app.main import app
-from app.mcp_server import build_server
-from app.store import SituationStore
-from app.travel.recorded import RecordedProvider
-from app.travel.source import TravelSource
+from app.mcp.server import build_server
+from app.situations.store import SituationStore
+from app.options.travel.recorded import RecordedProvider
+from app.options.travel.source import TravelSource
 
 TRIP = "travel_friday"
 DELAY = "It's 3:05pm on Friday 2 October and my train is running 45 minutes late."
@@ -102,3 +102,13 @@ def test_unreachable_mcp_server_is_a_clear_error(client):
     response = client.post("/api/chat", json={"text": DELAY})
     assert response.status_code == 502
     assert "Could not reach the MCP server" in response.json()["detail"]
+
+
+def test_reset_deletes_a_plan_made_in_conversation(client):
+    store = app.state.store
+    created = store.create("Dad's airport trip", timezone="Australia/Sydney").situation.id
+    assert created in [s["id"] for s in client.get("/api/config").json()["situations"]]
+    response = client.post("/api/reset", json={"situation_id": created}).json()
+    assert response == {"situation_id": created, "outcome": "deleted"}
+    assert created not in [s["id"] for s in client.get("/api/config").json()["situations"]]
+    assert client.post("/api/reset", json={"situation_id": TRIP}).json()["outcome"] == "reset"

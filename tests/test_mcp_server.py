@@ -10,14 +10,14 @@ import pytest
 from fastapi.testclient import TestClient
 from mcp import Client
 
-from app.candidate import Candidate, UpdateCommitment
-from app.choice import Choice
-from app.mcp_server import build_server
-from app.models import Commitment, Situation
-from app.options import OptionsFound
-from app.store import SituationStore
-from app.travel.recorded import RecordedProvider
-from app.travel.source import TravelSource
+from app.core.candidate import Candidate, UpdateCommitment
+from app.options.choice import Choice
+from app.mcp.server import build_server
+from app.core.models import Commitment, Situation
+from app.options.base import OptionsFound
+from app.situations.store import SituationStore
+from app.options.travel.recorded import RecordedProvider
+from app.options.travel.source import TravelSource
 
 TRIP = "travel_friday"
 AT_1505 = "2026-10-02T15:05:00+10:00"
@@ -73,6 +73,12 @@ def test_tools_are_listed(session):
         "find_options",
         "try_option",
         "confirm_option",
+        "create_situation",
+        "add_place",
+        "add_resource",
+        "add_commitment",
+        "add_goal",
+        "add_dependency",
     ]
 
 
@@ -274,4 +280,4 @@ def test_http_mcp_speaks_protocol_2025_11_25_and_keeps_old_endpoints():
 
         rpc(client, {"jsonrpc": "2.0", "method": "notifications/initialized"}, session_id)
         _, listed = rpc(client, {"jsonrpc": "2.0", "id": 2, "method": "tools/list"}, session_id)
-        assert len(listed["result"]["tools"]) == 6
+        assert len(listed["result"]["tools"]) == 12

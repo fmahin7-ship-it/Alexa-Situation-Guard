@@ -5,7 +5,7 @@
 
 from __future__ import annotations
 
-from .candidate import (
+from app.core.candidate import (
     AddCommitment,
     AddDependency,
     Candidate,
@@ -14,11 +14,11 @@ from .candidate import (
     UpdateCommitment,
     simulate,
 )
-from .engine import describe_situation, list_situation_ids, load_all_situations
-from .feasibility import evaluate_situation, time_form_errors
-from .impact import apply_event, evaluate_impact
-from .models import Commitment, Dependency, Event, Situation
-from .recovery import RecoveryResult, ScriptedProposer, recover
+from app.situations.fixtures import describe_situation, list_situation_ids, load_all_situations
+from app.core.feasibility import evaluate_situation, time_form_errors
+from app.core.impact import apply_event, evaluate_impact
+from app.core.models import Commitment, Dependency, Event, Situation
+from app.core.recovery import RecoveryResult, ScriptedProposer, recover
 
 
 def _print_result(situation: Situation) -> None:

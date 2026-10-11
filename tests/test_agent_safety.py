@@ -8,13 +8,15 @@ import pytest
 from mcp import Client
 
 from app.agent.llm import LLMReply, Message, ToolCall
-from app.agent.loop import McpToolRunner, is_approval, run_turn
-from app.agent.openai_provider import OpenAIChatProvider, chat_request
-from app.mcp_server import build_server
-from app.store import SituationStore
-from app.travel.recorded import RecordedProvider
-from app.travel.search import TravelRequest, TravelSearchError, travel_search
-from app.travel.source import TravelSource
+from app.agent.consent import is_approval
+from app.agent.loop import run_turn
+from app.agent.tool_runner import McpToolRunner
+from app.agent.providers.openai_chat import OpenAIChatProvider, chat_request
+from app.mcp.server import build_server
+from app.situations.store import SituationStore
+from app.options.travel.recorded import RecordedProvider
+from app.options.travel.search import TravelRequest, TravelSearchError, travel_search
+from app.options.travel.source import TravelSource
 
 TRIP = "travel_friday"
 CENTRAL, AIRPORT = [151.2063, -33.883], [151.1664, -33.9361]

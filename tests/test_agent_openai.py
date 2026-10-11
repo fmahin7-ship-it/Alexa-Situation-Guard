@@ -12,12 +12,13 @@ from mcp import Client
 from openai.types.chat import ChatCompletion
 
 from app.agent.llm import LLM_ENV, LLMError, Message, ToolCall, ToolResult, Usage, make_llm_provider
-from app.agent.loop import McpToolRunner, run_turn
-from app.agent.openai_provider import OpenAIChatProvider, chat_request
-from app.mcp_server import build_server
-from app.store import SituationStore
-from app.travel.recorded import RecordedProvider
-from app.travel.source import TravelSource
+from app.agent.loop import run_turn
+from app.agent.tool_runner import McpToolRunner
+from app.agent.providers.openai_chat import OpenAIChatProvider, chat_request
+from app.mcp.server import build_server
+from app.situations.store import SituationStore
+from app.options.travel.recorded import RecordedProvider
+from app.options.travel.source import TravelSource
 
 TRIP = "travel_friday"
 
@@ -174,4 +175,4 @@ def test_fake_openai_model_drives_the_real_tools_end_to_end(tmp_path):
     last = fake.requests[-1]["messages"]
     assert [m["role"] for m in last] == ["system", "user", "assistant", "tool", "assistant", "tool", "assistant", "tool"]
     assert json.loads(last[-1]["content"])["feasible"] is True
-    assert len(fake.requests[0]["tools"]) == 6
+    assert len(fake.requests[0]["tools"]) == 12

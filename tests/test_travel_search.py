@@ -10,10 +10,10 @@ import pytest
 from botocore.stub import Stubber
 from pydantic import ValidationError
 
-from app.engine import load_situation
-from app.travel.aws_location import AmazonLocationProvider, calculate_routes_params
-from app.travel.recorded import RecordedProvider
-from app.travel.search import TRAVEL_ENV, TravelRequest, TravelSearchError, make_travel_provider, travel_search
+from app.situations.fixtures import load_situation
+from app.options.travel.aws_location import AmazonLocationProvider, calculate_routes_params
+from app.options.travel.recorded import RecordedProvider
+from app.options.travel.search import TRAVEL_ENV, TravelRequest, TravelSearchError, make_travel_provider, travel_search
 
 RECORDED = Path(__file__).resolve().parent.parent / "data" / "recorded"
 CENTRAL = [151.2063, -33.883]

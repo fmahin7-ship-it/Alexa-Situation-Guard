@@ -82,15 +82,15 @@ def make_llm_provider(use_dotenv: bool = True) -> LLMProvider:
         load_dotenv(override=False)  # a real environment variable always wins over .env
     choice = os.environ.get(LLM_ENV, "scripted").strip().lower()
     if choice == "scripted":
-        from .scripted import ScriptedProvider, guided_policy
+        from app.agent.providers.scripted import ScriptedProvider, guided_policy
 
         return ScriptedProvider(guided_policy())
     if choice == "bedrock":
-        from .bedrock import BedrockConverseProvider
+        from app.agent.providers.bedrock_converse import BedrockConverseProvider
 
         return BedrockConverseProvider()
     if choice == "openai":
-        from .openai_provider import OpenAIChatProvider
+        from app.agent.providers.openai_chat import OpenAIChatProvider
 
         return OpenAIChatProvider()
     raise LLMError(f"{LLM_ENV} must be 'scripted', 'bedrock' or 'openai', not '{choice}'")

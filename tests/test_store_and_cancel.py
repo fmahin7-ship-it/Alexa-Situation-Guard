@@ -4,10 +4,10 @@ from __future__ import annotations
 
 import pytest
 
-from app.engine import load_situation
-from app.impact import apply_event, evaluate_impact
-from app.models import Event
-from app.store import LogEntry, SituationStore
+from app.situations.fixtures import load_situation
+from app.core.impact import apply_event, evaluate_impact
+from app.core.models import Event
+from app.situations.store import LogEntry, SituationStore
 
 
 def _cancel(commitment_id: str) -> Event:

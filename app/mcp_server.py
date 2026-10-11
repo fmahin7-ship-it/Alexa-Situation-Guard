@@ -147,7 +147,7 @@ def _offer(state: SessionState, label: str) -> Offer:
     return offer
 
 
-def _situation_view(state: SessionState) -> SituationView:
+def situation_view(state: SessionState) -> SituationView:
     situation = state.situation
     result = _evaluate(situation)
     return SituationView(
@@ -193,7 +193,7 @@ def build_server(
     @server.tool(annotations=ToolAnnotations(read_only_hint=True))
     def get_situation(situation_id: str) -> SituationView:
         """Current plan: commitments, goals at risk, the engine's reasons, and any options on offer."""
-        return _situation_view(_load(store, situation_id))
+        return situation_view(_load(store, situation_id))
 
     @server.tool()
     def report_change(

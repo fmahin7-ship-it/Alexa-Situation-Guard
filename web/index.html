@@ -1,0 +1,76 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Situation Guard</title>
+  <link rel="stylesheet" href="/static/style.css">
+</head>
+<body>
+  <header class="topbar">
+    <div class="brand">
+      <span class="brand-dot" aria-hidden="true"></span>
+      <div>
+        <h1>Situation Guard</h1>
+        <p class="tagline">Simulated Alexa+ &middot; tools served by the Situation Guard MCP server</p>
+      </div>
+    </div>
+    <div class="controls">
+      <span class="badge" id="brain-badge" title="Which model plays Alexa">brain: …</span>
+      <span class="badge" id="travel-badge" title="Where travel options come from">travel: …</span>
+      <label class="select-label">
+        <span class="visually-hidden">Situation shown in the proof panel</span>
+        <select id="situation-select" aria-label="Situation shown in the proof panel"></select>
+      </label>
+      <button id="reset" class="ghost" type="button">Reset demo</button>
+    </div>
+  </header>
+
+  <main class="layout">
+    <section class="alexa" aria-label="Conversation with Alexa">
+      <div class="ring-wrap">
+        <div id="ring" class="ring idle" aria-hidden="true"></div>
+        <p id="ring-status" class="ring-status" aria-live="polite">Ready</p>
+      </div>
+
+      <ol id="messages" class="messages" aria-live="polite"></ol>
+
+      <div class="chips" id="chips" aria-label="Try saying"></div>
+
+      <form id="composer" class="composer" autocomplete="off">
+        <button id="mic" class="icon" type="button" aria-label="Speak to Alexa" title="Speak (Chrome or Edge)">
+          <svg viewBox="0 0 24 24" width="20" height="20" aria-hidden="true"><path fill="currentColor" d="M12 14a3 3 0 0 0 3-3V5a3 3 0 0 0-6 0v6a3 3 0 0 0 3 3Zm5-3a5 5 0 0 1-10 0H5a7 7 0 0 0 6 6.93V21h2v-3.07A7 7 0 0 0 19 11h-2Z"/></svg>
+        </button>
+        <input id="input" type="text" placeholder="Tell Alexa what changed…" aria-label="Message to Alexa" maxlength="2000">
+        <button id="send" type="submit">Send</button>
+      </form>
+      <label class="voice-toggle"><input type="checkbox" id="speak-replies" checked> Speak Alexa's replies</label>
+    </section>
+
+    <section class="proof" aria-label="Proof: what the engine decided">
+      <div class="panel">
+        <div class="panel-head">
+          <h2 id="sit-name">Situation</h2>
+          <span id="sit-status" class="pill">…</span>
+        </div>
+        <p class="muted" id="sit-now"></p>
+        <h3>Goals</h3>
+        <ul id="goals" class="goals"></ul>
+        <h3>Plan</h3>
+        <ul id="plan" class="plan"></ul>
+      </div>
+
+      <div class="panel">
+        <div class="panel-head">
+          <h2>This turn</h2>
+          <span id="turn-meta" class="muted small"></span>
+        </div>
+        <p class="muted small">Every tool call Alexa made through MCP, and what the engine said.</p>
+        <ol id="steps" class="steps"><li class="empty">Nothing yet. Tell Alexa what changed.</li></ol>
+      </div>
+    </section>
+  </main>
+
+  <script src="/static/app.js"></script>
+</body>
+</html>

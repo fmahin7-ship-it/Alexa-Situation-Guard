@@ -1,16 +1,18 @@
-"""Situation State + feasibility + event impact API, plus the MCP server at /mcp."""
+"""Situation State + feasibility + event impact API, the MCP server at /mcp, and the web demo at /."""
 
 from __future__ import annotations
 
 from contextlib import asynccontextmanager
 
 from fastapi import FastAPI, HTTPException
+from fastapi.staticfiles import StaticFiles
 
 from .engine import describe_situation, list_situation_ids, load_all_situations, load_situation
 from .feasibility import FeasibilityResult, evaluate_situation
 from .impact import ImpactResult, evaluate_impact
 from .mcp_server import mcp_server
 from .models import Event, Situation
+from .web import WEB_DIR, router as web_router
 
 
 @asynccontextmanager
@@ -24,6 +26,10 @@ app = FastAPI(title="Commitment Graph — Event Impact", lifespan=lifespan)
 # MCP over Streamable HTTP at /mcp (one URL; all tools are called through it).
 _mcp_app = mcp_server.streamable_http_app(streamable_http_path="/mcp")
 app.router.routes.extend(_mcp_app.routes)
+
+# Simulated Alexa+ web demo: page at /, its files at /static, its API under /api.
+app.include_router(web_router)
+app.mount("/static", StaticFiles(directory=WEB_DIR), name="static")
 
 
 @app.get("/health")

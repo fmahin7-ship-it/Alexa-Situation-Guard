@@ -28,7 +28,10 @@ from app.agent.tool_runner import McpToolRunner
 from app.core.feasibility import evaluate_situation
 from app.mcp.views import SituationView, situation_view
 from app.situations.store import LogEntry, SituationStore
+from app.events.holidays.nager import HOLIDAYS_ENV
+from app.events.weather.open_meteo import WEATHER_ENV
 from app.options.travel.search import TRAVEL_ENV
+from app.situations.places import PLACES_ENV
 from app.paths import STATIC_DIR
 
 MCP_URL_ENV = "SITUATION_GUARD_MCP_URL"
@@ -85,6 +88,7 @@ class Config(BaseModel):
     brain: str
     brain_live: bool
     travel: str
+    modes: Dict[str, str] = Field(default_factory=dict, description="Each outside source: recorded/known or live")
     situations: List[Dict[str, str]]
 
 
@@ -106,6 +110,12 @@ def config(request: Request):
         brain=brain,
         brain_live=live,
         travel=os.environ.get(TRAVEL_ENV, "recorded"),
+        modes={
+            "travel": os.environ.get(TRAVEL_ENV, "recorded"),
+            "weather": os.environ.get(WEATHER_ENV, "recorded"),
+            "holidays": os.environ.get(HOLIDAYS_ENV, "recorded"),
+            "places": os.environ.get(PLACES_ENV, "known"),
+        },
         situations=situations,
     )
 

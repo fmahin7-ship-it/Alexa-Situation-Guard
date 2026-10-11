@@ -20,6 +20,7 @@ class CommitmentView(BaseModel):
     id: str
     owner_id: str
     action: str
+    title: Optional[str] = Field(None, description="Original wording, e.g. from a calendar")
     start: Optional[str] = None
     end: Optional[str] = None
     status: str
@@ -29,13 +30,20 @@ class CommitmentView(BaseModel):
     resource_ids: List[str] = Field(default_factory=list)
 
 
+class WindowView(BaseModel):
+    start: str
+    end: str
+    reason: str
+    source: str
+
+
 class PlaceView(BaseModel):
     id: str
     name: str
     outdoor: bool = False
     closes_on_public_holidays: bool = False
     has_coordinates: bool = False
-    unavailable: List[str] = Field(default_factory=list, description="e.g. 21:00-00:00 rain likely (82%)")
+    unavailable: List[WindowView] = Field(default_factory=list)
 
 
 class OfferView(BaseModel):
@@ -144,7 +152,8 @@ def situation_view(state: SessionState, verdict: FeasibilityResult) -> Situation
             for g in situation.goals
         ],
         commitments=[
-            CommitmentView(**c.model_dump(include=set(CommitmentView.model_fields))) for c in situation.commitments
+            CommitmentView(**c.model_dump(include=set(CommitmentView.model_fields) - {"title"}), title=c.meta.get("title"))
+            for c in situation.commitments
         ],
         places=[
             PlaceView(
@@ -153,7 +162,7 @@ def situation_view(state: SessionState, verdict: FeasibilityResult) -> Situation
                 outdoor=loc.outdoor,
                 closes_on_public_holidays=loc.closes_on_public_holidays,
                 has_coordinates=loc.latitude is not None and loc.longitude is not None,
-                unavailable=[f"{w.start} to {w.end}: {w.reason}" for w in loc.unavailable],
+                unavailable=[WindowView(**w.model_dump()) for w in loc.unavailable],
             )
             for loc in situation.locations
         ],

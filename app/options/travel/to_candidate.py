@@ -75,7 +75,7 @@ def travel_option_to_choice(situation: Situation, option: TravelOption, replaces
         end=option.arrive_at,
         origin_id=old.origin_id,
         destination_id=old.destination_id,
-        meta={"option_id": option.id, "source": option.source, "summary": describe_option(option)},
+        meta={"option_id": option.id, "source": option.source, "summary": describe_option(option), "replaces": replaces},
     )
 
     edits: List[Edit] = [

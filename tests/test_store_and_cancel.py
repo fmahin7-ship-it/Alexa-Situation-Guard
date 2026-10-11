@@ -7,7 +7,7 @@ import pytest
 from app.situations.fixtures import load_situation
 from app.core.impact import apply_event, evaluate_impact
 from app.core.models import Event
-from app.situations.store import LogEntry, SituationStore
+from app.situations.store import LogEntry, SituationStore, UnreadableSituation
 
 
 def _cancel(commitment_id: str) -> Event:
@@ -97,3 +97,32 @@ def test_unknown_or_unsafe_situation_ids_are_refused(tmp_path):
         store.load("no_such_situation")
     with pytest.raises(KeyError):
         store.load("../secrets")
+
+
+# Shaped like a Google OAuth token (the file that once sat in state/); every value is fake.
+TOKEN_LIKE = '{"token": "fake-secret", "client_id": "fake-client", "expiry": "2026-10-11T10:00:00Z"}'
+
+
+def test_a_file_that_is_not_a_situation_is_never_listed_loaded_or_deleted(tmp_path):
+    store = SituationStore(tmp_path)
+    created = store.create("My day").situation.id
+    token = tmp_path / "google_token.json"
+    token.write_text(TOKEN_LIKE, encoding="utf-8")
+
+    assert "google_token" not in store.list_ids() and created in store.list_ids()
+    with pytest.raises(UnreadableSituation) as error:
+        store.load("google_token")
+    assert "fake-secret" not in str(error.value) and error.value.__cause__ is None
+    with pytest.raises(UnreadableSituation):
+        store.forget("google_token")
+    assert token.read_text(encoding="utf-8") == TOKEN_LIKE
+
+
+def test_a_damaged_saved_copy_is_a_clear_error_and_reset_repairs_it(tmp_path):
+    store = SituationStore(tmp_path)
+    (tmp_path / "travel_friday.json").write_text("{not json", encoding="utf-8")
+    assert "travel_friday" in store.list_ids()
+    with pytest.raises(UnreadableSituation):
+        store.load("travel_friday")
+    store.reset("travel_friday")
+    assert store.load("travel_friday").situation == load_situation("travel_friday")

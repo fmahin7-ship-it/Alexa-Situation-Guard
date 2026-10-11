@@ -13,6 +13,7 @@ from app.situations.fixtures import load_situation
 from app.mcp.server import build_server
 from app.core.models import Goal, Location
 from app.situations.places import find_place
+from app.situations.places.amazon_location import PlaceLookupError
 from app.situations.store import SituationStore
 from app.options.travel.recorded import RecordedProvider
 from app.options.travel.source import TravelSource
@@ -25,9 +26,9 @@ class ToolFailed(Exception):
 
 
 class Tools:
-    def __init__(self, tmp_path):
+    def __init__(self, tmp_path, place_lookup=None):
         self.store = SituationStore(tmp_path)
-        self.server = build_server(self.store, [TravelSource(RecordedProvider())])
+        self.server = build_server(self.store, [TravelSource(RecordedProvider())], place_lookup=place_lookup)
 
     def __call__(self, tool: str, **arguments: Any) -> Dict[str, Any]:
         async def go():
@@ -177,3 +178,42 @@ def test_forget_deletes_only_plans_made_in_conversation(tools):
     assert sid not in tools.store.list_ids()
     with pytest.raises(ValueError, match="predefined"):
         tools.store.forget("travel_friday")
+
+
+class FlakyLookup:
+    """Refuses like an AWS user without geo-places:SearchText, until the permission is granted."""
+
+    name, live = "fake-places", False
+
+    def __init__(self):
+        self.allowed = False
+
+    def look_up(self, name, near=None):
+        if not self.allowed:
+            raise PlaceLookupError("Amazon Location refused (AccessDeniedException)")
+        return Location(id="loc_collins_st_melbourne_vic", name="Collins St, Melbourne VIC 3000",
+                        latitude=-37.8146, longitude=144.9655)
+
+
+def test_a_trip_to_an_unmapped_place_says_why_and_looking_it_up_again_fixes_it(tmp_path):
+    lookup = FlakyLookup()
+    tools = Tools(tmp_path, place_lookup=lookup)
+    sid = tools("create_situation", name="My day Mon 12 Oct", now="2026-10-11T21:00:00+11:00")["situation_id"]
+    here = tools("add_place", situation_id=sid, name="Current location", latitude=-37.69266, longitude=144.92994)
+    refused = tools("add_place", situation_id=sid, name="Colin Street Melbourne", look_up=True)
+    assert "AccessDeniedException" in refused["notes"][0]
+    assert tools.store.load(sid).log[-1].data["notes"] == refused["notes"]  # the reason is kept in the plan
+    trip = tools("add_commitment", situation_id=sid, owner="me", action="travel to Colin Street",
+                 from_place=here["added_id"], to_place=refused["added_id"])["added_id"]
+
+    with pytest.raises(ToolFailed, match="Colin Street Melbourne has no map coordinates"):
+        tools("find_options", situation_id=sid, commitment_id=trip, after="2026-10-12T11:00:00+11:00")
+
+    lookup.allowed = True
+    found = tools("add_place", situation_id=sid, name="Colin Street Melbourne", look_up=True)
+    assert found["added_id"] == refused["added_id"]  # same place, so the trip already points at it
+    place = next(loc for loc in tools.store.load(sid).situation.locations if loc.id == found["added_id"])
+    assert (place.latitude, place.longitude) == (-37.8146, 144.9655)
+    # Routes are now searched (and this recorded provider has no Melbourne recording).
+    with pytest.raises(ToolFailed, match="No travel search succeeded"):
+        tools("find_options", situation_id=sid, commitment_id=trip, after="2026-10-12T11:00:00+11:00")

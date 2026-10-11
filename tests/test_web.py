@@ -113,3 +113,36 @@ def test_reset_deletes_a_plan_made_in_conversation(client):
     assert response == {"situation_id": created, "outcome": "deleted"}
     assert created not in [s["id"] for s in client.get("/api/config").json()["situations"]]
     assert client.post("/api/reset", json={"situation_id": TRIP}).json()["outcome"] == "reset"
+
+
+def test_a_token_file_in_the_state_folder_never_breaks_the_page(client):
+    token = app.state.store.state_dir / "google_token.json"
+    token.write_text('{"token": "fake-secret", "client_id": "fake", "expiry": "2026-10-11T10:00:00Z"}', encoding="utf-8")
+
+    config = client.get("/api/config")
+    assert config.status_code == 200
+    assert "google_token" not in [s["id"] for s in config.json()["situations"]]
+    panel = client.get("/api/situations/google_token")
+    assert panel.status_code == 422 and "fake-secret" not in panel.text
+    assert client.post("/api/reset", json={"situation_id": "google_token"}).status_code == 422
+    assert token.exists()
+
+
+def test_a_damaged_saved_plan_is_listed_and_can_be_reset(client):
+    (app.state.store.state_dir / f"{TRIP}.json").write_text("{not json", encoding="utf-8")
+    config = client.get("/api/config")
+    assert config.status_code == 200
+    assert {"id": TRIP, "name": f"{TRIP} (saved copy unreadable)", "predefined": True} in config.json()["situations"]
+    assert client.get(f"/api/situations/{TRIP}").status_code == 422
+    assert client.post("/api/reset", json={"situation_id": TRIP}).json()["outcome"] == "reset"
+    assert client.get(f"/api/situations/{TRIP}").status_code == 200
+
+
+def test_a_misconfigured_model_is_a_clear_error(client):
+    def broken():
+        raise ValueError("SITUATION_GUARD_LLM must be scripted, bedrock or openai")
+
+    app.state.llm_factory = broken
+    response = client.post("/api/chat", json={"text": DELAY})
+    assert response.status_code == 503
+    assert "model is not available" in response.json()["detail"]

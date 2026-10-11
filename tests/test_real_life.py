@@ -13,7 +13,9 @@ from zoneinfo import ZoneInfo
 import pytest
 from mcp import Client
 
+from app.calendars import google
 from app.calendars.google import GoogleCalendar, GoogleCalendarError, parse_google_events
+from app.paths import STATE_DIR
 from app.core.models import Location
 from app.events.holidays.nager import RecordedHolidayProvider
 from app.events.weather.forecast import Conditions, DayForecast, Forecast, GeoPoint, HourlyForecast, WeatherError
@@ -170,6 +172,24 @@ def test_google_refusal_is_a_clear_error():
 def test_not_signed_in_says_how(tmp_path):
     with pytest.raises(GoogleCalendarError, match="app.calendars.google login"):
         GoogleCalendar(token_path=tmp_path / "none.json").events_on(date(2026, 10, 12), SYDNEY)
+
+
+def test_google_token_is_kept_out_of_the_situation_folder(tmp_path, monkeypatch):
+    assert STATE_DIR not in google.DEFAULT_TOKEN.parents
+    old, new = tmp_path / "state" / "google_token.json", tmp_path / "secrets" / "google_token.json"
+    old.parent.mkdir()
+    old.write_text("{}", encoding="utf-8")
+    monkeypatch.setattr(google, "LEGACY_TOKEN", old)
+    monkeypatch.setattr(google, "DEFAULT_TOKEN", new)
+    monkeypatch.delenv(google.TOKEN_ENV, raising=False)
+
+    assert google.token_location() == new  # an old token is moved, not lost: no new sign-in needed
+    assert new.read_text(encoding="utf-8") == "{}" and not old.exists()
+    assert GoogleCalendar().signed_in
+
+    custom = tmp_path / "elsewhere" / "token.json"
+    monkeypatch.setenv(google.TOKEN_ENV, str(custom))
+    assert google.token_location() == custom
 
 
 def test_schedule_then_clash_then_move_the_meeting_in_google(tmp_path):

@@ -107,6 +107,12 @@ let position = null; // { latitude, longitude } once the user allows location
 let inflight = null; // AbortController of the message being answered
 const planStatus = {}; // plan id -> "ok" | "bad", for the sidebar dots
 let unseenSteps = 0;
+// Timeline zoom in pixels per hour; 0 fits the whole plan in the panel (and does not scroll).
+const ZOOMS = [0, 40, 80, 160, 320];
+const savedZoom = saved.get("sg-zoom");
+let zoom = savedZoom !== null && ZOOMS.includes(Number(savedZoom)) ? Number(savedZoom) : 80;
+let lastView = null;
+let scrolledFor = null; // "plan|zoom" the timeline last jumped to the next thing for
 
 function el(tag, attrs = {}, ...children) {
   const node = document.createElement(tag);
@@ -524,6 +530,7 @@ function renderPlan(view) {
 }
 
 function renderTimeline(view) {
+  lastView = view;
   const tz = view.timezone;
   const broken = new Set(view.broken_commitment_ids);
   const timed = view.commitments.filter((c) => toMs(c.start) != null);
@@ -534,7 +541,9 @@ function renderTimeline(view) {
   $("unscheduled").replaceChildren(el("span", {}, "Not scheduled yet:"), ...unscheduled.map((c) => el("span", { class: "chip" }, `${c.owner_id} · ${pretty(c.title || c.action)}`)));
 
   const box = $("timeline");
+  $("tl-hint").textContent = "";
   if (!timed.length && !blocks.length) {
+    box.style.removeProperty("--track-w");
     box.replaceChildren(el("div", { class: "tl-empty" }, "Nothing on the timeline yet. Tell Alexa what you’re planning."));
     return;
   }
@@ -551,9 +560,15 @@ function renderTimeline(view) {
   const pct = (ms) => `${Math.max(0, Math.min(100, ((ms - lo) / span) * 100))}%`;
   const width = (a, b) => `${Math.max(0.8, ((Math.min(b, hi) - Math.max(a, lo)) / span) * 100)}%`;
 
-  // Ticks: a round step giving at most ~7 labels.
+  // Track width: the panel's width, or wider (scrolls sideways) at the chosen pixels per hour.
+  const fitPx = Math.max(200, (box.clientWidth || 600) - 98);
+  const trackPx = zoom ? Math.max(fitPx, Math.round((span / 3600e3) * zoom)) : fitPx;
+  box.style.setProperty("--track-w", `${trackPx}px`);
+  if (trackPx > fitPx) $("tl-hint").textContent = "Scroll sideways to see the whole day →";
+
+  // Ticks: a round step with about 80px between labels.
   const steps = [15, 30, 60, 120, 180, 360, 720, 1440, 2880].map((m) => m * 60000);
-  const maxTicks = Math.max(2, Math.min(7, Math.floor(((box.clientWidth || 600) - 110) / 80)));
+  const maxTicks = Math.max(2, Math.floor(trackPx / 80));
   const step = steps.find((s) => span / s <= maxTicks) || steps[steps.length - 1];
   const naive = timed.every((c) => isClock(c.start));
   const ticks = [];
@@ -594,6 +609,38 @@ function renderTimeline(view) {
     rows.push(el("div", { class: "tl-row" }, el("div", { class: "tl-label place", title: mine[0].place.name }, mine[0].place.name), el("div", { class: "tl-track" }, ...tickLines(false), ...items, nowLine())));
   }
   box.replaceChildren(...rows);
+
+  // Open on what is coming up next (not on an empty evening), once per plan and zoom.
+  const key = `${view.id}|${zoom}`;
+  if (scrolledFor !== key && box.clientWidth > 0) {
+    scrolledFor = key;
+    const ahead = timed
+      .filter((c) => c.status !== "cancelled" && (nowMs == null || (toMs(c.end) ?? toMs(c.start)) >= nowMs))
+      .map((c) => toMs(c.start));
+    const focus = ahead.length ? Math.min(...ahead) : nowMs ?? lo;
+    box.scrollLeft = Math.max(0, ((focus - lo) / span) * trackPx - 60);
+  }
+}
+
+function setZoom(next) {
+  zoom = next;
+  saved.set("sg-zoom", String(zoom));
+  const i = ZOOMS.indexOf(zoom);
+  $("zoom-out").disabled = i <= 1;
+  $("zoom-in").disabled = i === ZOOMS.length - 1;
+  $("zoom-fit").setAttribute("aria-pressed", String(zoom === 0));
+  if (lastView) renderTimeline(lastView);
+}
+
+function setWide(on) {
+  $("app").dataset.wide = String(on);
+  const button = $("expand-plan");
+  button.setAttribute("aria-pressed", String(on));
+  const label = on ? "Make the plan panel narrower" : "Make the plan panel wider";
+  button.setAttribute("aria-label", label);
+  button.title = label;
+  saved.set("sg-wide", on ? "on" : "off");
+  if (lastView) renderTimeline(lastView);
 }
 
 // --- settings and start-up ----------------------------------------------------------------------
@@ -657,6 +704,17 @@ function setUpControls() {
       else refreshSituation();
     });
   }
+  $("zoom-in").addEventListener("click", () => setZoom(ZOOMS[Math.min(ZOOMS.length - 1, ZOOMS.indexOf(zoom) + 1)]));
+  $("zoom-out").addEventListener("click", () => setZoom(ZOOMS[Math.max(1, ZOOMS.indexOf(zoom) - 1)]));
+  $("zoom-fit").addEventListener("click", () => setZoom(zoom === 0 ? 80 : 0));
+  setZoom(zoom);
+  $("expand-plan").addEventListener("click", () => setWide($("app").dataset.wide !== "true"));
+  setWide(saved.get("sg-wide") === "on");
+  let resizeTimer = null;
+  window.addEventListener("resize", () => {
+    clearTimeout(resizeTimer);
+    resizeTimer = setTimeout(() => { if (lastView) renderTimeline(lastView); }, 150);
+  });
   $("show-plan").addEventListener("click", () => setView("plan"));
   $("back-chat").addEventListener("click", () => setView("chat"));
   $("nav-open").addEventListener("click", () => $("app").classList.add("nav-open"));

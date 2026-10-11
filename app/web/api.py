@@ -28,7 +28,7 @@ from app.agent.prompt import system_prompt
 from app.agent.tool_runner import McpToolRunner
 from app.core.feasibility import evaluate_situation
 from app.mcp.views import SituationView, situation_view
-from app.situations.store import LogEntry, SituationStore
+from app.situations.store import LogEntry, SituationStore, UnreadableSituation
 from app.events.holidays.nager import HOLIDAYS_ENV
 from app.events.weather.open_meteo import WEATHER_ENV
 from app.options.travel.search import TRAVEL_ENV
@@ -110,6 +110,14 @@ def _calendar_status() -> str:
     return "google" if calendar.signed_in else "google-signed-out"
 
 
+def _plan_entry(store: SituationStore, situation_id: str) -> Dict[str, Any]:
+    try:
+        name = store.load(situation_id).situation.name
+    except UnreadableSituation:  # a damaged saved copy must not take the whole page down
+        name = f"{situation_id} (saved copy unreadable)"
+    return {"id": situation_id, "name": name, "predefined": store.is_predefined(situation_id)}
+
+
 @router.get("/")
 def index():
     """The page, with its script and styles linked by version so a browser never mixes old and new files."""
@@ -128,10 +136,7 @@ def config(request: Request):
     except Exception as exc:  # misconfigured .env must not take the page down
         brain, live = f"unavailable ({exc})", False
     store = _store(request)
-    situations = [
-        {"id": sid, "name": store.load(sid).situation.name, "predefined": store.is_predefined(sid)}
-        for sid in store.list_ids()
-    ]
+    situations = [_plan_entry(store, sid) for sid in store.list_ids()]
     return Config(
         brain=brain,
         brain_live=live,
@@ -154,7 +159,10 @@ async def chat(body: ChatRequest, request: Request):
     lock = _locks.setdefault(session_id, asyncio.Lock())
     async with lock:  # one turn at a time per conversation
         history = _sessions.get(session_id, [])
-        provider = _llm(request)
+        try:
+            provider = _llm(request)
+        except Exception as exc:  # misconfigured .env
+            raise HTTPException(status_code=503, detail=f"The assistant's model is not available: {exc}") from exc
         try:
             async with _tool_connector(request)() as client:
                 here = (body.location.latitude, body.location.longitude) if body.location else None
@@ -186,6 +194,8 @@ def situation_panel(situation_id: str, request: Request):
         state = store.load(situation_id)
     except KeyError as exc:
         raise HTTPException(status_code=404, detail=f"Unknown situation '{situation_id}'") from exc
+    except UnreadableSituation as exc:
+        raise HTTPException(status_code=422, detail=str(exc)) from exc
     try:
         verdict = evaluate_situation(state.situation)
     except ValueError as exc:
@@ -214,6 +224,8 @@ def reset(body: ResetRequest, request: Request):
             outcome = "deleted"
     except KeyError as exc:
         raise HTTPException(status_code=404, detail=f"Unknown situation '{body.situation_id}'") from exc
+    except UnreadableSituation as exc:
+        raise HTTPException(status_code=422, detail=f"Not deleted: {exc}") from exc
     if body.session_id:
         _sessions.pop(body.session_id, None)
     return {"situation_id": body.situation_id, "outcome": outcome}

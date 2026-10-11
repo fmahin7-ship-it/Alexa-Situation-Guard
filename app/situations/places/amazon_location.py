@@ -82,6 +82,14 @@ class AmazonPlaceLookup:
 
         try:
             response = self._get_client().search_text(**search_text_params(name, near))
-        except (BotoCoreError, ClientError) as exc:
+        except ClientError as exc:
+            if exc.response.get("Error", {}).get("Code") == "AccessDeniedException":
+                # The raw message names the AWS account and user; it would reach the LLM.
+                raise PlaceLookupError(
+                    "Amazon Location refused (AccessDeniedException): this AWS user is not allowed "
+                    "geo-places:SearchText"
+                ) from exc
+            raise PlaceLookupError(f"Amazon Location could not look up '{name}': {exc}") from exc
+        except BotoCoreError as exc:
             raise PlaceLookupError(f"Amazon Location could not look up '{name}': {exc}") from exc
         return parse_search_text(name, response)

@@ -111,6 +111,37 @@ def test_delay_then_reject_three_then_confirm_the_fourth(session):
     assert statuses["c_train"] == "cancelled" and statuses["c_travel_D"] == "planned"
 
 
+def test_moving_a_confirmed_journey_replaces_it_instead_of_adding_another(session):
+    _delay_train(session)
+    session.call("find_options", situation_id=TRIP, commitment_id="c_train", after=FROM_1500)
+    session.call("confirm_option", situation_id=TRIP, label="D")
+
+    # "Move my journey": asked about the original trip, the options are for the journey that replaced it.
+    found = session.call("find_options", situation_id=TRIP, commitment_id="c_train", after=FROM_1500)
+    assert found["commitment_id"] == "c_travel_D"
+    assert session.call("confirm_option", situation_id=TRIP, label="D")["verified"] is True
+
+    planned = [c["id"] for c in session.call("get_situation", situation_id=TRIP)["commitments"]
+               if c["id"].startswith("c_travel") and c["status"] == "planned"]
+    assert planned == ["c_travel_D_2"]
+
+
+def test_a_trip_replaced_twice_by_mistake_asks_which_journey(session):
+    state = session.store.load(TRIP)
+    journey = dict(owner_id="me", action="travel_transit", origin_id="loc_central", destination_id="loc_airport_t1",
+                   meta={"option_id": "x"})  # saved before journeys recorded what they replaced
+    state.situation.commitments += [
+        Commitment(id="c_travel_B", start="2026-10-02T15:10:00+10:00", end="2026-10-02T15:40:00+10:00", **journey),
+        Commitment(id="c_travel_B_2", start="2026-10-02T16:10:00+10:00", end="2026-10-02T16:40:00+10:00", **journey),
+    ]
+    train = next(c for c in state.situation.commitments if c.id == "c_train")
+    train.status, train.owner_id = "cancelled", "me"
+    train.origin_id, train.destination_id = "loc_central", "loc_airport_t1"
+    session.store.save(state)
+    with pytest.raises(ToolFailed, match="replaced by more than one journey: c_travel_B .*c_travel_B_2"):
+        session.call("find_options", situation_id=TRIP, commitment_id="c_train", after=FROM_1500)
+
+
 def test_state_survives_a_new_server(tmp_path):
     first = Session(tmp_path)
     _delay_train(first)

@@ -19,7 +19,7 @@ from app.events.holidays.calendar import HolidayProvider
 from app.events.weather.forecast import WeatherProvider
 from app.options.base import OptionSource
 from app.situations.places import PlaceLookup
-from app.situations.store import LogEntry, Offer, SessionState, SituationStore
+from app.situations.store import LogEntry, Offer, SessionState, SituationStore, UnreadableSituation
 
 
 @dataclass
@@ -39,6 +39,8 @@ class ToolContext:
         except KeyError as exc:
             known = ", ".join(self.store.list_ids())
             raise ToolError(f"Unknown situation '{situation_id}'. Known: {known}") from exc
+        except UnreadableSituation as exc:
+            raise ToolError(str(exc)) from exc
         if state.live_clock:
             state.situation.now = real_now(state.situation.timezone)
         return state

@@ -33,7 +33,8 @@ def apply_plan_edits(
     ctx: ToolContext, state: SessionState, edits: List[Edit], added_id: str, what: str, notes: Optional[List[str]] = None
 ) -> PlanEditView:
     """Apply with the engine's checks, save, and report how the plan stands."""
-    verdict = apply_and_save(ctx, state, edits, "plan_edited", what, {"added_id": added_id})
+    data = {"added_id": added_id, **({"notes": notes} if notes else {})}
+    verdict = apply_and_save(ctx, state, edits, "plan_edited", what, data)
     return PlanEditView(
         situation_id=state.situation.id,
         added_id=added_id,
@@ -100,12 +101,16 @@ def register(server: MCPServer, ctx: ToolContext) -> None:
         else:
             place, notes = place_named(name, look_up=look_up, lookup=ctx.place_lookup, near=near)
         flags = {"outdoor": outdoor or None, "closes_on_public_holidays": closes_on_public_holidays or None}
-        if exact:
-            flags.update(latitude=exact[0], longitude=exact[1])
-        existing = next((loc for loc in state.situation.locations if loc.id == place.id), None)
+        if place.latitude is not None:
+            flags.update(latitude=place.latitude, longitude=place.longitude)
+        # A looked-up place is named after the map result, so also match the name the user said.
+        same = {place.id, plain_place(name).id}
+        existing = next((loc for loc in state.situation.locations if loc.id in same), None)
         if existing is not None:
+            if place.latitude is None and existing.latitude is None:
+                notes.append(f"'{existing.name}' still has no map coordinates: travel and weather cannot be checked for it")
             return apply_plan_edits(
-                ctx, state, [UpdateLocation(location_id=place.id, **flags)], place.id, f"place {place.name}", notes
+                ctx, state, [UpdateLocation(location_id=existing.id, **flags)], existing.id, f"place {existing.name}", notes
             )
         place = place.model_copy(update={"outdoor": outdoor, "closes_on_public_holidays": closes_on_public_holidays})
         if place.latitude is None:

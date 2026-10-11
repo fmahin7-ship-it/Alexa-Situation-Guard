@@ -9,6 +9,7 @@ from mcp_types import ToolAnnotations
 
 from app.mcp.context import ToolContext, evaluate
 from app.mcp.views import SituationBrief, SituationView, situation_view
+from app.situations.store import UnreadableSituation
 
 
 def register(server: MCPServer, ctx: ToolContext) -> None:
@@ -17,7 +18,10 @@ def register(server: MCPServer, ctx: ToolContext) -> None:
         """List the situations being guarded, with their current time and whether they still work."""
         briefs = []
         for situation_id in ctx.store.list_ids():
-            situation = ctx.store.load(situation_id).situation
+            try:
+                situation = ctx.store.load(situation_id).situation
+            except UnreadableSituation:
+                continue  # a damaged saved copy must not hide every other plan
             briefs.append(
                 SituationBrief(id=situation.id, name=situation.name, now=situation.now, feasible=evaluate(situation).feasible)
             )

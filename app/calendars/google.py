@@ -6,25 +6,29 @@ One-time sign-in (opens your browser; you approve on Google's own page):
 
 It needs an OAuth client of type "Desktop app" from Google Cloud, saved as JSON at
 SITUATION_GUARD_GOOGLE_CLIENT (default secrets/google_client.json, gitignored). The
-sign-in token is kept at state/google_token.json (gitignored). Only calendar events
-are in scope: nothing else in the Google account can be read.
+sign-in token is kept at SITUATION_GUARD_GOOGLE_TOKEN (default secrets/google_token.json,
+gitignored) — never under state/, where every *.json is a saved situation. Only calendar
+events are in scope: nothing else in the Google account can be read.
 """
 
 from __future__ import annotations
 
 import os
+import shutil
 import sys
 from datetime import date, datetime, time, timedelta
 from pathlib import Path
 from typing import Any, Dict, List, Optional
 from zoneinfo import ZoneInfo
 
-from app.paths import REPO_ROOT, STATE_DIR
+from app.paths import REPO_ROOT, SECRETS_DIR, STATE_DIR
 from app.situations.importers.calendar_ics import CalendarEvent
 
 CLIENT_ENV = "SITUATION_GUARD_GOOGLE_CLIENT"
-DEFAULT_CLIENT = REPO_ROOT / "secrets" / "google_client.json"
-TOKEN_PATH = STATE_DIR / "google_token.json"
+DEFAULT_CLIENT = SECRETS_DIR / "google_client.json"
+TOKEN_ENV = "SITUATION_GUARD_GOOGLE_TOKEN"
+DEFAULT_TOKEN = SECRETS_DIR / "google_token.json"
+LEGACY_TOKEN = STATE_DIR / "google_token.json"
 SCOPES = ["https://www.googleapis.com/auth/calendar.events"]
 EVENTS_URL = "https://www.googleapis.com/calendar/v3/calendars/primary/events"
 LOGIN_HINT = ".venv/Scripts/python -m app.calendars.google login"
@@ -32,6 +36,15 @@ LOGIN_HINT = ".venv/Scripts/python -m app.calendars.google login"
 
 class GoogleCalendarError(Exception):
     """Not signed in, no permission, or Google refused the request."""
+
+
+def token_location() -> Path:
+    """Where the sign-in token lives. A token still at the old state/ location is moved here once."""
+    path = Path(os.environ.get(TOKEN_ENV) or DEFAULT_TOKEN)
+    if not path.exists() and LEGACY_TOKEN.exists():
+        path.parent.mkdir(parents=True, exist_ok=True)
+        shutil.move(str(LEGACY_TOKEN), str(path))
+    return path
 
 
 def _moment(value: Dict[str, Any]) -> Optional[datetime]:
@@ -69,30 +82,34 @@ class GoogleCalendar:
     name = "google-calendar"
     live = True
 
-    def __init__(self, session: Any = None, token_path: Path = TOKEN_PATH):
+    def __init__(self, session: Any = None, token_path: Optional[Path] = None):
         self._session = session
         self._token_path = token_path
 
+    def _token(self) -> Path:
+        return self._token_path or token_location()
+
     @property
     def signed_in(self) -> bool:
-        return self._session is not None or self._token_path.exists()
+        return self._session is not None or self._token().exists()
 
     def _authorised(self) -> Any:
         if self._session is not None:
             return self._session
-        if not self._token_path.exists():
+        token = self._token()
+        if not token.exists():
             raise GoogleCalendarError(f"Google Calendar is not signed in yet. Run: {LOGIN_HINT}")
         from google.auth.exceptions import RefreshError
         from google.auth.transport.requests import AuthorizedSession, Request
         from google.oauth2.credentials import Credentials
 
-        credentials = Credentials.from_authorized_user_file(str(self._token_path), SCOPES)
+        credentials = Credentials.from_authorized_user_file(str(token), SCOPES)
         if not credentials.valid:
             try:
                 credentials.refresh(Request())
             except RefreshError as exc:
                 raise GoogleCalendarError(f"Google sign-in expired. Run: {LOGIN_HINT}") from exc
-            self._token_path.write_text(credentials.to_json(), encoding="utf-8")
+            token.write_text(credentials.to_json(), encoding="utf-8")
         self._session = AuthorizedSession(credentials)
         return self._session
 
@@ -155,7 +172,7 @@ def make_calendar() -> Optional[GoogleCalendar]:
     raise ValueError(f"{CALENDAR_ENV} must be 'google' or 'off', not '{choice}'")
 
 
-def login(client_path: Optional[Path] = None, token_path: Path = TOKEN_PATH) -> None:
+def login(client_path: Optional[Path] = None, token_path: Optional[Path] = None) -> None:
     """Open Google's consent page in the browser and save the token."""
     from google_auth_oauthlib.flow import InstalledAppFlow
 
@@ -163,6 +180,7 @@ def login(client_path: Optional[Path] = None, token_path: Path = TOKEN_PATH) -> 
     if not client.exists():
         raise SystemExit(f"No OAuth client file at {client}. Download it from Google Cloud (Desktop app).")
     credentials = InstalledAppFlow.from_client_secrets_file(str(client), SCOPES).run_local_server(port=0)
+    token_path = token_path or token_location()
     token_path.parent.mkdir(parents=True, exist_ok=True)
     token_path.write_text(credentials.to_json(), encoding="utf-8")
     print(f"Signed in. Token saved to {token_path}")

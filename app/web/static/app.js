@@ -652,14 +652,21 @@ function setZoom(next) {
   if (lastView) renderTimeline(lastView);
 }
 
-function setWide(on) {
-  $("app").dataset.wide = String(on);
-  const button = $("expand-plan");
-  button.setAttribute("aria-pressed", String(on));
-  const label = on ? "Make the plan panel narrower" : "Make the plan panel wider";
-  button.setAttribute("aria-label", label);
-  button.title = label;
-  saved.set("sg-wide", on ? "on" : "off");
+// Plan panel size: "normal", "wide", "full" (the whole window) or "hidden".
+const PANEL_SIZES = ["normal", "wide", "full", "hidden"];
+
+function panelSize() { return $("app").dataset.panel || "normal"; }
+
+function setPanel(size) {
+  $("app").dataset.panel = size;
+  const label = (id, on, onText, offText) => {
+    $(id).setAttribute("aria-pressed", String(on));
+    $(id).setAttribute("aria-label", on ? onText : offText);
+    $(id).title = on ? onText : offText;
+  };
+  label("expand-plan", size === "wide", "Make the plan panel narrower", "Make the plan panel wider");
+  label("panel-full", size === "full", "Leave full window (Esc)", "Full window (Esc to leave)");
+  saved.set("sg-panel", size);
   if (lastView) renderTimeline(lastView);
 }
 
@@ -729,14 +736,20 @@ function setUpControls() {
   $("zoom-out").addEventListener("click", () => setZoom(ZOOMS[Math.max(1, ZOOMS.indexOf(zoom) - 1)]));
   $("zoom-fit").addEventListener("click", () => setZoom(zoom === 0 ? 80 : 0));
   setZoom(zoom);
-  $("expand-plan").addEventListener("click", () => setWide($("app").dataset.wide !== "true"));
-  setWide(saved.get("sg-wide") === "on");
+  $("panel-hide").addEventListener("click", () => setPanel("hidden"));
+  $("expand-plan").addEventListener("click", () => setPanel(panelSize() === "wide" ? "normal" : "wide"));
+  $("panel-full").addEventListener("click", () => setPanel(panelSize() === "full" ? "normal" : "full"));
+  $("timeline").addEventListener("dblclick", () => setPanel(panelSize() === "full" ? "normal" : "full"));
+  document.addEventListener("keydown", (e) => {
+    if (e.key === "Escape" && panelSize() === "full" && !document.querySelector("dialog[open]")) setPanel("normal");
+  });
+  setPanel(PANEL_SIZES.includes(saved.get("sg-panel")) ? saved.get("sg-panel") : "normal");
   let resizeTimer = null;
   window.addEventListener("resize", () => {
     clearTimeout(resizeTimer);
     resizeTimer = setTimeout(() => { if (lastView) renderTimeline(lastView); }, 150);
   });
-  $("show-plan").addEventListener("click", () => setView("plan"));
+  $("show-plan").addEventListener("click", () => (panelSize() === "hidden" ? setPanel("normal") : setView("plan")));
   $("back-chat").addEventListener("click", () => setView("chat"));
   $("nav-open").addEventListener("click", () => $("app").classList.add("nav-open"));
   $("nav-close").addEventListener("click", closeNav);

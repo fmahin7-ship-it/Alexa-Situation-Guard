@@ -337,8 +337,19 @@ button { cursor: pointer; }
 .zoom-btn:hover:not(:disabled) { background: var(--surface); color: var(--text); }
 .zoom-btn:disabled { opacity: 0.4; cursor: not-allowed; }
 .zoom-btn[aria-pressed="true"] { background: var(--surface); color: var(--text); box-shadow: var(--shadow-sm); }
-#expand-plan[aria-pressed="true"] { background: var(--accent-soft); color: var(--accent); }
-.app[data-wide="true"] { --inspector-w: min(820px, 60vw); }
+.win-btns { display: inline-flex; gap: 2px; flex: none; }
+.win-btn { width: 32px; height: 32px; }
+.win-btn[aria-pressed="true"] { background: var(--accent-soft); color: var(--accent); }
+
+/* Plan panel size: normal, wide, full window, or hidden (wide screens only; smaller ones swap panes). */
+@media (min-width: 1121px) {
+  .app[data-panel="wide"] { --inspector-w: min(820px, 60vw); }
+  .app[data-panel="full"] .inspector { position: fixed; inset: 0; z-index: 40; border-left: 0; }
+  .app[data-panel="full"] .insp-head, .app[data-panel="full"] .insp-meta, .app[data-panel="full"] .tabs, .app[data-panel="full"] .panel { width: min(1400px, 100%); margin-inline: auto; }
+  .app[data-panel="hidden"] { grid-template-columns: var(--sidebar-w) minmax(0, 1fr) 0; }
+  .app[data-panel="hidden"] .inspector { display: none; }
+  .app[data-panel="hidden"] #show-plan { display: inline-flex !important; }
+}
 
 .timeline { border: 1px solid var(--border); border-radius: var(--radius); background: var(--surface); overflow-x: auto; overflow-y: hidden; box-shadow: var(--shadow-sm); }
 .tl-axis, .tl-row { display: grid; grid-template-columns: 96px var(--track-w, minmax(0, 1fr)); width: max-content; min-width: 100%; }
@@ -435,7 +446,7 @@ button { cursor: pointer; }
   .app { grid-template-columns: var(--sidebar-w) minmax(0, 1fr); }
   .inspector { grid-column: 2; grid-row: 1; display: none; }
   .app[data-view="plan"] .inspector { display: flex; }
-  #expand-plan { display: none; }
+  .win-btns { display: none; }
   .app[data-view="plan"] .chat { display: none; }
   .only-medium { display: inline-flex !important; }
   .mini-dot { width: 8px; height: 8px; border-radius: 50%; background: var(--border-strong); }

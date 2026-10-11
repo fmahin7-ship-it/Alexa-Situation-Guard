@@ -119,9 +119,17 @@
         <strong id="plan-name">…</strong>
       </div>
       <span class="verdict" id="sit-status">…</span>
-      <button class="icon-btn" id="expand-plan" type="button" aria-pressed="false" aria-label="Make the plan panel wider" title="Make the plan panel wider">
-        <svg viewBox="0 0 24 24" width="18" height="18" aria-hidden="true"><path d="M15 3h6v6 M9 21H3v-6 M21 3l-7 7 M3 21l7-7" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
-      </button>
+      <div class="win-btns" role="group" aria-label="Plan panel size">
+        <button class="icon-btn win-btn" id="panel-hide" type="button" aria-label="Hide the plan panel" title="Hide the plan panel">
+          <svg viewBox="0 0 24 24" width="18" height="18" aria-hidden="true"><path d="M5 12h14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>
+        </button>
+        <button class="icon-btn win-btn" id="expand-plan" type="button" aria-pressed="false" aria-label="Make the plan panel wider" title="Make the plan panel wider">
+          <svg viewBox="0 0 24 24" width="18" height="18" aria-hidden="true"><path d="M9 6l-6 6 6 6 M15 6l6 6-6 6" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+        </button>
+        <button class="icon-btn win-btn" id="panel-full" type="button" aria-pressed="false" aria-label="Show the plan full window" title="Full window (Esc to leave)">
+          <svg viewBox="0 0 24 24" width="18" height="18" aria-hidden="true"><path d="M4 9V4h5 M20 9V4h-5 M4 15v5h5 M20 15v5h-5" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+        </button>
+      </div>
     </header>
     <div class="insp-meta">
       <span id="sit-now"></span>
@@ -143,7 +151,7 @@
           <button type="button" class="zoom-btn" id="zoom-in" aria-label="Zoom in" title="Zoom in">+</button>
         </div>
       </div>
-      <div class="timeline" id="timeline" role="img" aria-label="Timeline of the plan"></div>
+      <div class="timeline" id="timeline" role="img" aria-label="Timeline of the plan" title="Double-click for full window"></div>
       <div class="unscheduled" id="unscheduled" hidden></div>
       <div class="legend">
         <span><i class="sw ok"></i>On track</span>

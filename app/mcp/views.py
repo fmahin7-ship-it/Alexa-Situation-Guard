@@ -29,6 +29,15 @@ class CommitmentView(BaseModel):
     resource_ids: List[str] = Field(default_factory=list)
 
 
+class PlaceView(BaseModel):
+    id: str
+    name: str
+    outdoor: bool = False
+    closes_on_public_holidays: bool = False
+    has_coordinates: bool = False
+    unavailable: List[str] = Field(default_factory=list, description="e.g. 21:00-00:00 rain likely (82%)")
+
+
 class OfferView(BaseModel):
     label: str
     summary: str
@@ -52,6 +61,7 @@ class SituationView(BaseModel):
     broken_commitment_ids: List[str]
     goals: List[GoalView]
     commitments: List[CommitmentView]
+    places: List[PlaceView] = Field(default_factory=list)
     offered_for: Optional[str] = None
     offers: List[OfferView] = Field(default_factory=list)
 
@@ -96,6 +106,23 @@ class PlanEditView(BaseModel):
     added_id: str = Field(..., description="Id of what was added; use it in later calls")
     feasible: bool = Field(..., description="Whether the plan works so far (a plan being written may not yet)")
     reasons: List[str] = Field(default_factory=list)
+    notes: List[str] = Field(default_factory=list)
+
+
+class OutsideCheckView(BaseModel):
+    """What an outside source (weather, public holidays, a calendar) changed, and how the plan stands now."""
+
+    situation_id: str
+    source: str
+    live: bool = Field(..., description="False when replaying recorded data")
+    changes: List[str] = Field(default_factory=list, description="What was added to the plan")
+    added_ids: List[str] = Field(default_factory=list)
+    feasible_before: bool
+    feasible_after: bool
+    goals_at_risk: List[str] = Field(default_factory=list)
+    reasons: List[str] = Field(default_factory=list)
+    notes: List[str] = Field(default_factory=list)
+    attribution: Optional[str] = None
 
 
 def offer_views(state: SessionState) -> List[OfferView]:
@@ -118,6 +145,17 @@ def situation_view(state: SessionState, verdict: FeasibilityResult) -> Situation
         ],
         commitments=[
             CommitmentView(**c.model_dump(include=set(CommitmentView.model_fields))) for c in situation.commitments
+        ],
+        places=[
+            PlaceView(
+                id=loc.id,
+                name=loc.name,
+                outdoor=loc.outdoor,
+                closes_on_public_holidays=loc.closes_on_public_holidays,
+                has_coordinates=loc.latitude is not None and loc.longitude is not None,
+                unavailable=[f"{w.start} to {w.end}: {w.reason}" for w in loc.unavailable],
+            )
+            for loc in situation.locations
         ],
         offered_for=state.offered_for,
         offers=offer_views(state),

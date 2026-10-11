@@ -7,6 +7,7 @@
 2.5 Goals (optional): a goal is lost when a commitment it protects is cancelled
 2.6 People: one person cannot do two things at once (overlapping commitments with
     the same owner). Instants and commitments marked meta.concurrent are exempt.
+2.7 Places: nothing can happen at a place while it is unavailable (Location.unavailable).
 
 Cancelled commitments are skipped by every check; anything that requires a
 cancelled commitment is broken.
@@ -70,6 +71,12 @@ def _situation_moments(situation: Situation) -> List[Tuple[str, str, datetime]]:
         dt = _parse_moment(constraint.before)
         if dt is not None:
             moments.append((constraint.id, constraint.before, dt))
+    for location in situation.locations:
+        for window in location.unavailable:
+            for raw in (window.start, window.end):
+                dt = _parse_moment(raw)
+                if dt is not None:
+                    moments.append((location.id, raw, dt))
     now = _parse_moment(situation.now)
     if now is not None:
         moments.append(("now", situation.now, now))
@@ -393,6 +400,30 @@ def _check_people(situation: Situation, reasons: List[str], broken: Set[str]) ->
             reasons.append(f"'{owner}' cannot do two things at once: {ids} overlap")
 
 
+def _check_places(situation: Situation, reasons: List[str], broken: Set[str]) -> None:
+    """A commitment at a place may not overlap a time that place is unavailable. An instant counts if inside."""
+    places = {loc.id: loc for loc in situation.locations if loc.unavailable}
+    for commitment in situation.commitments:
+        place = places.get(commitment.location_id or "")
+        if place is None or _is_cancelled(commitment):
+            continue
+        window = _window(commitment)
+        if window.status is not WindowStatus.VALID:
+            continue
+        for blocked in place.unavailable:
+            b_start, b_end = _parse_moment(blocked.start), _parse_moment(blocked.end)
+            if b_start is None or b_end is None:
+                continue
+            overlaps = window.start < b_end and b_start < window.end
+            instant_inside = window.start == window.end and b_start <= window.start < b_end
+            if overlaps or instant_inside:
+                broken.add(commitment.id)
+                reasons.append(
+                    f"'{commitment.id}' is at '{place.id}' ({place.name}) while it is unavailable "
+                    f"{blocked.start} to {blocked.end}: {blocked.reason}"
+                )
+
+
 def _goals_affected_by(
     situation: Situation, broken_commitment_ids: Set[str]
 ) -> List[str]:
@@ -579,6 +610,7 @@ def evaluate_situation(situation: Situation) -> FeasibilityResult:
     _check_deadlines(situation, commitments, reasons, broken, unevaluated_constraints)
     _check_resources(situation, reasons, broken, unevaluated_resources)
     _check_people(situation, reasons, broken)
+    _check_places(situation, reasons, broken)
     _check_not_in_past(situation, reasons, broken)
     _check_goals(situation, commitments, reasons, broken)
 

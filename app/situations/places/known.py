@@ -1,11 +1,4 @@
-"""Places — turn a spoken name into a Location.
-
-Any name is a place: "the drawing room", "the office", "Central Station".
-A few places also have verified map coordinates (the same points the recorded
-Amazon Location searches used); only those can be used for travel search.
-A geocoding provider (e.g. Amazon Location Places) could fill in coordinates
-for more names behind the same place_named() function.
-"""
+"""Known places: a few names with verified map coordinates (the points the recorded travel searches used)."""
 
 from __future__ import annotations
 
@@ -63,12 +56,3 @@ def find_place(query: str) -> Optional[Location]:
                 best, best_len = entry["location"], len(name)
     return best.model_copy(deep=True) if best else None
 
-
-def place_named(name: str) -> Location:
-    """A known place (with coordinates) if the name matches one, otherwise a plain place without them."""
-    known = find_place(name)
-    if known is not None:
-        return known
-    clean = " ".join(name.split()) or "place"
-    slug = re.sub(r"[^a-z0-9]+", "_", clean.lower()).strip("_")[:30] or "place"
-    return Location(id=f"loc_{slug}", name=clean)

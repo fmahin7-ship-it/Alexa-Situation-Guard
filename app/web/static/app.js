@@ -211,6 +211,19 @@ function describeStep(step) {
     case "add_goal":
       item.append(el("p", {}, `Goal: ${a.description}`));
       break;
+    case "check_weather":
+    case "check_public_holidays":
+    case "import_calendar": {
+      const broke = r.feasible_before && !r.feasible_after;
+      item.className = `step ${broke ? "bad" : "info"}`;
+      head.append(el("span", { class: "muted small" }, `${r.source || ""}${r.live ? " · live" : ""}`));
+      if (broke) head.append(verdict(false, "plan broken"));
+      for (const change of r.changes || []) item.append(el("p", {}, change));
+      if (broke && r.reasons && r.reasons[0]) item.append(el("p", { class: "reason" }, r.reasons[0]));
+      for (const note of r.notes || []) item.append(el("p", { class: "note" }, note));
+      if (r.attribution) item.append(el("p", { class: "muted small" }, r.attribution));
+      break;
+    }
     case "add_dependency":
       item.append(el("p", { class: "muted" }, `${a.commitment_id} needs ${a.needs} first`));
       break;
@@ -261,6 +274,17 @@ async function refreshSituation() {
           el("span", { class: "status" }, c.status)
         );
       })
+    );
+    const blocked = (view.places || []).filter((p) => p.unavailable.length);
+    $("places-block").hidden = !blocked.length;
+    $("places").replaceChildren(
+      ...blocked.flatMap((p) =>
+        p.unavailable.map((w) => {
+          const [range, reason] = w.split(": ");
+          const [from, to] = range.split(" to ");
+          return el("li", {}, el("span", { class: "verdict bad" }, "✗"), `${p.name} ${day(from)} ${clock(from)}–${clock(to)}: ${reason}`);
+        })
+      )
     );
   } catch (error) {
     $("sit-name").textContent = "Situation unavailable";

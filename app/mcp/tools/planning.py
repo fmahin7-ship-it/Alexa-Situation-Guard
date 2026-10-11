@@ -11,27 +11,36 @@ from typing import List, Optional
 from mcp.server.mcpserver import MCPServer
 from mcp.server.mcpserver.exceptions import ToolError
 
-from app.core.candidate import AddCommitment, AddDependency, AddGoal, AddLocation, AddResource, Edit, apply_edits
-from app.core.feasibility import situation_errors, time_form_errors
+from app.core.candidate import (
+    AddCommitment,
+    AddDependency,
+    AddGoal,
+    AddLocation,
+    AddResource,
+    Edit,
+    UpdateLocation,
+)
+from app.core.feasibility import time_form_errors
 from app.core.models import Commitment, Dependency, Goal, Resource, Situation
 from app.core.timeutil import shift_moment, zone_of
-from app.mcp.context import ToolContext, evaluate, slug, unique
+from app.mcp.context import ToolContext, apply_and_save, slug, unique
 from app.mcp.views import PlanEditView
 from app.situations.places import place_named
 from app.situations.store import LogEntry, SessionState
 
 
-def apply_plan_edits(ctx: ToolContext, state: SessionState, edits: List[Edit], added_id: str, what: str) -> PlanEditView:
-    """Apply on a copy; refuse with reasons if malformed; otherwise save and report how the plan stands."""
-    updated, errors = apply_edits(state.situation, edits)
-    errors = errors or situation_errors(updated)
-    if errors:
-        raise ToolError("Not added: " + "; ".join(errors))
-    state.situation = updated
-    state.log.append(LogEntry(kind="plan_edited", detail=what, data={"added_id": added_id}))
-    ctx.store.save(state)
-    verdict = evaluate(updated)
-    return PlanEditView(situation_id=updated.id, added_id=added_id, feasible=verdict.feasible, reasons=verdict.reasons)
+def apply_plan_edits(
+    ctx: ToolContext, state: SessionState, edits: List[Edit], added_id: str, what: str, notes: Optional[List[str]] = None
+) -> PlanEditView:
+    """Apply with the engine's checks, save, and report how the plan stands."""
+    verdict = apply_and_save(ctx, state, edits, "plan_edited", what, {"added_id": added_id})
+    return PlanEditView(
+        situation_id=state.situation.id,
+        added_id=added_id,
+        feasible=verdict.feasible,
+        reasons=verdict.reasons,
+        notes=notes or [],
+    )
 
 
 def register(server: MCPServer, ctx: ToolContext) -> None:
@@ -50,17 +59,33 @@ def register(server: MCPServer, ctx: ToolContext) -> None:
         return PlanEditView(situation_id=state.situation.id, added_id=state.situation.id, feasible=True)
 
     @server.tool()
-    def add_place(situation_id: str, name: str) -> PlanEditView:
+    def add_place(
+        situation_id: str,
+        name: str,
+        outdoor: bool = False,
+        closes_on_public_holidays: bool = False,
+        look_up: bool = False,
+    ) -> PlanEditView:
         """
-        Add a place by name: "the drawing room", "the office", "Central Station", ... Returns its place id.
-        Only places with known map coordinates can be used for travel search.
+        Add a place by name: "the drawing room", "the office", "the garden", "Central Station", ...
+        Returns its place id. Mark `outdoor` if weather matters there, `closes_on_public_holidays` for
+        places like an office. Set `look_up` for real addresses or landmarks so they get map coordinates
+        (needed for travel and weather); rooms and nicknames do not need it. Adding an existing place
+        again updates those marks.
         """
         state = ctx.load(situation_id)
-        place = place_named(name)
-        if any(loc.id == place.id for loc in state.situation.locations):
-            verdict = evaluate(state.situation)
-            return PlanEditView(situation_id=situation_id, added_id=place.id, feasible=verdict.feasible, reasons=verdict.reasons)
-        return apply_plan_edits(ctx, state, [AddLocation(location=place)], place.id, f"place {place.name}")
+        near = next(([loc.longitude, loc.latitude] for loc in state.situation.locations if loc.latitude is not None), None)
+        place, notes = place_named(name, look_up=look_up, lookup=ctx.place_lookup, near=near)
+        flags = {"outdoor": outdoor or None, "closes_on_public_holidays": closes_on_public_holidays or None}
+        existing = next((loc for loc in state.situation.locations if loc.id == place.id), None)
+        if existing is not None:
+            return apply_plan_edits(
+                ctx, state, [UpdateLocation(location_id=place.id, **flags)], place.id, f"place {place.name}", notes
+            )
+        place = place.model_copy(update={"outdoor": outdoor, "closes_on_public_holidays": closes_on_public_holidays})
+        if place.latitude is None:
+            notes.append(f"'{place.name}' has no map coordinates: travel and weather cannot be checked for it")
+        return apply_plan_edits(ctx, state, [AddLocation(location=place)], place.id, f"place {place.name}", notes)
 
     @server.tool()
     def add_resource(situation_id: str, name: str, kind: str = "thing", capacity: int = 1) -> PlanEditView:

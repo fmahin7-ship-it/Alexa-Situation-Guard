@@ -13,25 +13,17 @@ commitment do not describe the same trip.
 
 from __future__ import annotations
 
-import math
 from typing import List, Optional, Tuple
 
 from app.core.candidate import AddCommitment, AddDependency, Candidate, Edit, RemoveDependency, UpdateCommitment
 from app.options.choice import Choice
-from app.core.models import Commitment, Dependency, Location, Situation
+from app.core.models import Commitment, Dependency, Situation
 from app.options.travel.option import TravelOption, describe_option
+from app.core.geo import distance_m
 
 # How far a route may start/end from the situation's location and still count
 # as the same place. Routing snaps to the nearest road or path, so not exact.
 ENDPOINT_TOLERANCE_M = 500
-
-
-def _distance_m(lon_lat: List[float], location: Location) -> float:
-    """Great-circle distance between a [lon, lat] point and a location."""
-    lon1, lat1 = math.radians(lon_lat[0]), math.radians(lon_lat[1])
-    lon2, lat2 = math.radians(location.longitude), math.radians(location.latitude)
-    a = math.sin((lat2 - lat1) / 2) ** 2 + math.cos(lat1) * math.cos(lat2) * math.sin((lon2 - lon1) / 2) ** 2
-    return 6_371_000 * 2 * math.asin(math.sqrt(a))
 
 
 def _endpoint_check(
@@ -41,7 +33,7 @@ def _endpoint_check(
     location = next((loc for loc in situation.locations if loc.id == location_id), None)
     if location is None or location.latitude is None or location.longitude is None or not position:
         return False, None
-    distance = _distance_m(position, location)
+    distance = distance_m(position, [location.longitude, location.latitude])
     if distance > ENDPOINT_TOLERANCE_M:
         return True, (
             f"option {end}s {distance:.0f} m from '{location.id}' ({location.name}), "

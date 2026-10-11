@@ -16,7 +16,7 @@ from typing import Annotated, List, Literal, Optional, Tuple, Union
 from pydantic import BaseModel, Field
 
 from app.core.feasibility import evaluate_situation, situation_errors
-from app.core.models import Commitment, Dependency, Goal, Location, Resource, Situation
+from app.core.models import Commitment, Dependency, Goal, Location, Resource, Situation, Unavailability
 
 
 class UpdateCommitment(BaseModel):
@@ -47,6 +47,24 @@ class AddResource(BaseModel):
     resource: Resource
 
 
+class UpdateLocation(BaseModel):
+    """Change what is known about a place (only the given fields)."""
+
+    op: Literal["update_location"] = "update_location"
+    location_id: str
+    outdoor: Optional[bool] = None
+    closes_on_public_holidays: Optional[bool] = None
+
+
+class SetUnavailability(BaseModel):
+    """Replace the windows one source (e.g. weather) put on a place; other sources' windows stay."""
+
+    op: Literal["set_unavailability"] = "set_unavailability"
+    location_id: str
+    source: str
+    windows: List[Unavailability] = Field(default_factory=list)
+
+
 class AddGoal(BaseModel):
     op: Literal["add_goal"] = "add_goal"
     goal: Goal
@@ -58,7 +76,10 @@ class RemoveDependency(BaseModel):
 
 
 Edit = Annotated[
-    Union[UpdateCommitment, AddCommitment, AddDependency, RemoveDependency, AddLocation, AddResource, AddGoal],
+    Union[
+        UpdateCommitment, AddCommitment, AddDependency, RemoveDependency,
+        AddLocation, UpdateLocation, AddResource, AddGoal, SetUnavailability,
+    ],
     Field(discriminator="op"),
 ]
 
@@ -132,6 +153,26 @@ def _apply_edit(situation: Situation, edit: Edit) -> Optional[str]:
         if any(r.id == edit.resource.id for r in situation.resources):
             return f"add_resource: resource '{edit.resource.id}' already exists"
         situation.resources.append(edit.resource.model_copy(deep=True))
+        return None
+
+    if isinstance(edit, UpdateLocation):
+        place = next((loc for loc in situation.locations if loc.id == edit.location_id), None)
+        if place is None:
+            return f"update_location: unknown location '{edit.location_id}'"
+        if edit.outdoor is not None:
+            place.outdoor = edit.outdoor
+        if edit.closes_on_public_holidays is not None:
+            place.closes_on_public_holidays = edit.closes_on_public_holidays
+        return None
+
+    if isinstance(edit, SetUnavailability):
+        place = next((loc for loc in situation.locations if loc.id == edit.location_id), None)
+        if place is None:
+            return f"set_unavailability: unknown location '{edit.location_id}'"
+        if any(w.source != edit.source for w in edit.windows):
+            return "set_unavailability: every window must come from the same source as the edit"
+        kept = [w for w in place.unavailable if w.source != edit.source]
+        place.unavailable = kept + [w.model_copy(deep=True) for w in edit.windows]
         return None
 
     if isinstance(edit, AddGoal):

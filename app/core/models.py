@@ -22,6 +22,15 @@ class Goal(BaseModel):
     )
 
 
+class Unavailability(BaseModel):
+    """A time when a place cannot be used: rain on an outdoor table, a public holiday at the office, ..."""
+
+    start: str
+    end: str
+    reason: str
+    source: str = Field(..., description="Who added it (e.g. weather, holidays); a refresh replaces its own windows")
+
+
 class Location(BaseModel):
     """A place commitments start, end, or happen at. Coordinates are optional."""
 
@@ -30,6 +39,9 @@ class Location(BaseModel):
     address: Optional[str] = None
     latitude: Optional[float] = None
     longitude: Optional[float] = None
+    outdoor: bool = Field(False, description="Weather can make it unusable")
+    closes_on_public_holidays: bool = Field(False, description="Closed on public holidays (e.g. an office)")
+    unavailable: List[Unavailability] = Field(default_factory=list)
 
 
 class Resource(BaseModel):

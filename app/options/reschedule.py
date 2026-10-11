@@ -1,14 +1,16 @@
 """Reschedule — the generic option source for time clashes.
 
 Works for anything with a time window: meetings, TV shows, study sessions,
-deliveries, ... When a commitment clashes with others (same person, or a shared
-resource such as one TV), it proposes moving it after them, before them, or
-moving each of them after it. It only proposes; the engine decides each one
+deliveries, ... A commitment can be blocked by other commitments (same person,
+or a shared resource such as one TV) or by its place being unavailable (rain on
+an outdoor table, a public holiday at the office). It proposes moving it after
+the blockers, before them, or moving each clashing commitment after it. It only proposes; the engine decides each one
 (e.g. a move into the past, or onto another clash, is rejected by try_option).
 """
 
 from __future__ import annotations
 
+from dataclasses import dataclass
 from datetime import datetime
 from typing import List, Optional, Tuple
 
@@ -38,6 +40,29 @@ def _clock(value: Optional[str]) -> str:
 
 def _who_what(c: Commitment) -> str:
     return f"{c.owner_id}'s {c.action.replace('_', ' ')}"
+
+
+@dataclass
+class Blocker:
+    """Something in the way: another commitment, or a time the place is unavailable."""
+
+    start: str
+    end: str
+    label: str
+    commitment: Optional[Commitment] = None
+
+
+def _place_windows(situation: Situation, commitment: Commitment) -> List[Blocker]:
+    mine = _window(commitment)
+    place = next((loc for loc in situation.locations if loc.id == commitment.location_id), None)
+    if mine is None or place is None:
+        return []
+    blockers = []
+    for window in place.unavailable:
+        start, end = parse_moment(window.start), parse_moment(window.end)
+        if start is not None and end is not None and mine[0] < end and start < mine[1]:
+            blockers.append(Blocker(window.start, window.end, f"{place.name} unavailable ({window.reason})"))
+    return blockers
 
 
 def _clashes(situation: Situation, commitment: Commitment) -> List[Commitment]:
@@ -78,7 +103,8 @@ class RescheduleSource:
         before: Optional[str] = None,
     ) -> OptionsFound:
         clashes = _clashes(situation, commitment)
-        if not clashes:
+        blockers = [Blocker(c.start, c.end, _who_what(c), c) for c in clashes] + _place_windows(situation, commitment)
+        if not blockers:
             raise ValueError(
                 f"'{commitment.id}' does not clash in time with anything, so there is nothing to reschedule around"
             )
@@ -87,10 +113,10 @@ class RescheduleSource:
 
         # (commitment to move, new start, new end, why)
         moves: List[Tuple[Commitment, str, str, str]] = []
-        last = max(clashes, key=lambda c: parse_moment(c.end))
-        moves.append((commitment, last.end, shift_moment(last.end, length, zone), f"after {_who_what(last)}"))
-        first = min(clashes, key=lambda c: parse_moment(c.start))
-        moves.append((commitment, shift_moment(first.start, -length, zone), first.start, f"before {_who_what(first)}"))
+        last = max(blockers, key=lambda b: parse_moment(b.end))
+        moves.append((commitment, last.end, shift_moment(last.end, length, zone), f"after {last.label}"))
+        first = min(blockers, key=lambda b: parse_moment(b.start))
+        moves.append((commitment, shift_moment(first.start, -length, zone), first.start, f"before {first.label}"))
         for other in clashes:
             other_length = minutes_between(other.start, other.end)
             moves.append(

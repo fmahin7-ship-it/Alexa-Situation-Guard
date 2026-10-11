@@ -1,0 +1,40 @@
+BEGIN:VCALENDAR
+VERSION:2.0
+PRODID:-//Situation Guard//Sample work calendar (fictional)//EN
+BEGIN:VEVENT
+UID:standup-001@situation-guard.example
+DTSTART;TZID=Australia/Sydney:20261012T093000
+DTEND;TZID=Australia/Sydney:20261012T094500
+RRULE:FREQ=WEEKLY;BYDAY=MO
+SUMMARY:Team stand-up
+LOCATION:Office
+END:VEVENT
+BEGIN:VEVENT
+UID:team-002@situation-guard.example
+DTSTART;TZID=Australia/Sydney:20261012T140000
+DTEND;TZID=Australia/Sydney:20261012T150000
+SUMMARY:Team meeting
+LOCATION:Office
+DESCRIPTION:Planning for Q4\, budget and hiring
+END:VEVENT
+BEGIN:VEVENT
+UID:design-003@situation-guard.example
+DTSTART:20261012T040000Z
+DTEND:20261012T050000Z
+SUMMARY:Design review
+LOCATION:Office
+END:VEVENT
+BEGIN:VEVENT
+UID:birthday-004@situation-guard.example
+DTSTART;VALUE=DATE:20261012
+DTEND;VALUE=DATE:20261013
+SUMMARY:Mum's birthday
+END:VEVENT
+BEGIN:VEVENT
+UID:review-005@situation-guard.example
+DTSTART;TZID=Australia/Sydney:20261005T100000
+DTEND;TZID=Australia/Sydney:20261005T110000
+SUMMARY:Quarterly review
+LOCATION:Office
+END:VEVENT
+END:VCALENDAR

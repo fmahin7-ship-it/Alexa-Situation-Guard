@@ -183,9 +183,9 @@ def test_back_to_back_is_not_a_clash():
 
 
 def test_any_name_is_a_place_but_only_known_ones_have_coordinates():
-    room = place_named("Drawing Room")
+    room, _ = place_named("Drawing Room")
     assert (room.id, room.name, room.latitude) == ("loc_drawing_room", "Drawing Room", None)
-    assert place_named("Central").latitude is not None
+    assert place_named("Central")[0].latitude is not None
 
 
 def test_time_shift_keeps_the_form_and_crosses_daylight_saving():

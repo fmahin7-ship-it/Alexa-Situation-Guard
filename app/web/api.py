@@ -18,7 +18,7 @@ import uuid
 from typing import Any, AsyncContextManager, Callable, Dict, List, Optional
 
 from fastapi import APIRouter, HTTPException, Request
-from fastapi.responses import FileResponse
+from fastapi.responses import HTMLResponse
 from pydantic import BaseModel, Field
 
 from app.agent.llm import LLMProvider, Message, make_llm_provider
@@ -97,7 +97,7 @@ class Config(BaseModel):
     travel: str
     modes: Dict[str, str] = Field(default_factory=dict, description="Each outside source: recorded/known or live")
     calendar: str = Field("off", description="off, google, or google-signed-out")
-    situations: List[Dict[str, str]]
+    situations: List[Dict[str, Any]] = Field(..., description="id, name, and whether it is predefined (reset) or made in conversation (delete)")
 
 
 def _calendar_status() -> str:
@@ -112,7 +112,12 @@ def _calendar_status() -> str:
 
 @router.get("/")
 def index():
-    return FileResponse(STATIC_DIR / "index.html")
+    """The page, with its script and styles linked by version so a browser never mixes old and new files."""
+    page = (STATIC_DIR / "index.html").read_text(encoding="utf-8")
+    for name in ("app.js", "style.css"):
+        version = int((STATIC_DIR / name).stat().st_mtime)
+        page = page.replace(f"/static/{name}", f"/static/{name}?v={version}")
+    return HTMLResponse(page, headers={"Cache-Control": "no-cache"})
 
 
 @router.get("/api/config", response_model=Config)
@@ -123,7 +128,10 @@ def config(request: Request):
     except Exception as exc:  # misconfigured .env must not take the page down
         brain, live = f"unavailable ({exc})", False
     store = _store(request)
-    situations = [{"id": sid, "name": store.load(sid).situation.name} for sid in store.list_ids()]
+    situations = [
+        {"id": sid, "name": store.load(sid).situation.name, "predefined": store.is_predefined(sid)}
+        for sid in store.list_ids()
+    ]
     return Config(
         brain=brain,
         brain_live=live,

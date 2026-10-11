@@ -5,130 +5,184 @@
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>Situation Guard</title>
   <meta name="description" content="Tell Alexa your plans. When plans clash or reality changes, Situation Guard checks every fix before anything changes.">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="/static/style.css">
 </head>
 <body>
-  <header class="topbar">
+<div class="app" id="app" data-view="chat">
+
+  <!-- Sidebar: brand, plans, connections -->
+  <aside class="sidebar" id="sidebar" aria-label="Plans and connections">
     <div class="brand">
-      <svg class="logo" viewBox="0 0 40 40" aria-hidden="true">
-        <circle cx="20" cy="20" r="15" fill="none" stroke="currentColor" stroke-width="5"/>
-        <path d="M13 21l5 5 9-11" fill="none" stroke="currentColor" stroke-width="3.2" stroke-linecap="round" stroke-linejoin="round"/>
-      </svg>
-      <div>
-        <h1>Situation Guard</h1>
-        <p class="tagline">Your plans, kept working · simulated Alexa+ over MCP</p>
+      <span class="brand-mark" aria-hidden="true">
+        <svg viewBox="0 0 24 24" width="18" height="18"><path d="M12 3l7 3v5c0 4.4-3 8.4-7 10-4-1.6-7-5.6-7-10V6z" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round"/><path d="M8.5 12l2.5 2.5 4.5-5" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+      </span>
+      <div class="brand-text">
+        <strong>Situation Guard</strong>
+        <span>for Alexa+</span>
       </div>
+      <button class="icon-btn only-narrow" id="nav-close" type="button" aria-label="Close menu">
+        <svg viewBox="0 0 24 24" width="18" height="18"><path d="M6 6l12 12M18 6L6 18" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>
+      </button>
     </div>
-    <div class="top-actions">
-      <span class="status-chip" id="brain-chip" title="Which AI plays Alexa"><span class="dot"></span><span id="brain-label">Loading…</span></span>
-      <span class="status-chip" id="loc-chip" title="Your device location, used for here, trips and weather"><span class="dot"></span><span id="loc-label">…</span></span>
-      <span class="status-chip" id="data-chip" title="Where outside data comes from"><span class="dot"></span><span id="data-label">…</span></span>
-      <button class="btn ghost" id="how-btn" type="button">How it works</button>
-      <button class="btn ghost" id="new-chat" type="button" title="Forget the conversation (plans are kept)">New chat</button>
+
+    <button class="btn btn-primary btn-block" id="new-chat" type="button">
+      <svg viewBox="0 0 24 24" width="16" height="16" aria-hidden="true"><path d="M12 5v14M5 12h14" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"/></svg>
+      New conversation
+    </button>
+
+    <nav class="side-section side-plans">
+      <div class="side-label">Plans</div>
+      <ul class="plan-list" id="plan-list"></ul>
+    </nav>
+
+    <div class="side-section connections">
+      <div class="side-label">Connections</div>
+      <ul class="conn-list">
+        <li id="conn-brain"><span class="dot"></span><span class="conn-name">Alexa’s brain</span><span class="conn-value" id="brain-label">…</span></li>
+        <li id="conn-loc"><span class="dot"></span><span class="conn-name">Location</span><span class="conn-value" id="loc-label">…</span></li>
+        <li id="conn-data"><span class="dot"></span><span class="conn-name">Weather &amp; travel</span><span class="conn-value" id="data-label">…</span></li>
+        <li id="conn-cal"><span class="dot"></span><span class="conn-name">Calendar</span><span class="conn-value" id="cal-label">…</span></li>
+      </ul>
+      <button class="link-btn" id="how-btn" type="button">How Situation Guard works →</button>
     </div>
-  </header>
+  </aside>
+  <div class="scrim" id="scrim"></div>
 
-  <main class="layout">
-    <!-- Left: talking to Alexa -->
-    <section class="panel alexa-panel" aria-label="Talk to Alexa">
-      <div class="alexa-head">
-        <div id="ring" class="ring idle" aria-hidden="true"><span></span></div>
-        <div>
-          <h2>Alexa</h2>
-          <p id="ring-status" class="muted small" aria-live="polite">Ready when you are</p>
-        </div>
+  <!-- Conversation -->
+  <main class="chat" aria-label="Conversation with Alexa">
+    <header class="chat-head">
+      <button class="icon-btn only-narrow" id="nav-open" type="button" aria-label="Open menu">
+        <svg viewBox="0 0 24 24" width="20" height="20"><path d="M4 7h16M4 12h16M4 17h16" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>
+      </button>
+      <div class="orb idle" id="ring" aria-hidden="true"><span></span></div>
+      <div class="chat-title">
+        <strong>Alexa</strong>
+        <span id="ring-status" aria-live="polite">Ready</span>
       </div>
+      <button class="btn btn-ghost only-medium" id="show-plan" type="button">
+        <span class="mini-dot" id="plan-dot"></span> View plan
+      </button>
+    </header>
 
-      <div id="conversation" class="conversation">
-        <div id="welcome" class="welcome">
-          <h3 class="welcome-title">Keep every plan working.</h3>
-          <p class="welcome-text">Tell Alexa what you are planning. When plans clash or something changes, she finds fixes, a strict checker tests each one, and nothing changes until you say yes.</p>
-          <ol class="steps-strip">
-            <li><span class="num">1</span><div><strong>Tell</strong><br><span class="muted">plans, changes, anything</span></div></li>
-            <li><span class="num">2</span><div><strong>Checked</strong><br><span class="muted">every fix tested by the engine</span></div></li>
-            <li><span class="num">3</span><div><strong>You decide</strong><br><span class="muted">nothing moves without a yes</span></div></li>
-          </ol>
-          <div id="brain-note" class="note-banner" hidden></div>
-          <h4 class="gallery-title">Try a situation</h4>
-          <div id="gallery" class="gallery"></div>
-        </div>
-        <ol id="messages" class="messages" aria-live="polite"></ol>
-      </div>
-
-      <div id="script" class="script" hidden>
-        <div class="script-head">
-          <span id="script-title" class="script-title"></span>
-          <button id="script-close" class="link-btn" type="button">Close</button>
-        </div>
-        <div id="script-steps" class="script-steps"></div>
-      </div>
-
-      <form id="composer" class="composer" autocomplete="off">
-        <button id="mic" class="icon-btn" type="button" aria-label="Speak to Alexa" title="Speak (Chrome or Edge)">
-          <svg viewBox="0 0 24 24" width="20" height="20" aria-hidden="true"><path fill="currentColor" d="M12 14a3 3 0 0 0 3-3V5a3 3 0 0 0-6 0v6a3 3 0 0 0 3 3Zm5-3a5 5 0 0 1-10 0H5a7 7 0 0 0 6 6.93V21h2v-3.07A7 7 0 0 0 19 11h-2Z"/></svg>
-        </button>
-        <input id="input" type="text" placeholder="Tell Alexa your plans, or what changed…" aria-label="Message to Alexa" maxlength="2000">
-        <button id="speak-toggle" class="icon-btn" type="button" aria-pressed="true" title="Alexa speaks her replies">
-          <svg viewBox="0 0 24 24" width="20" height="20" aria-hidden="true"><path fill="currentColor" d="M3 10v4h4l5 4V6L7 10H3Zm13.5 2A4.5 4.5 0 0 0 14 8v8a4.47 4.47 0 0 0 2.5-4Z"/></svg>
-        </button>
-        <button id="send" class="btn primary" type="submit">Send</button>
-      </form>
-    </section>
-
-    <!-- Right: the plan and the proof -->
-    <section class="plan-col" aria-label="The plan and what the engine decided">
-      <div class="panel plan-panel">
-        <div class="plan-head">
-          <div class="plan-pick">
-            <label for="situation-select" class="muted small">Plan</label>
-            <select id="situation-select"></select>
-          </div>
-          <div class="plan-meta">
-            <span id="sit-status" class="verdict-pill">…</span>
-            <button class="btn ghost small" id="reset" type="button" title="Start this plan again">Reset plan</button>
-          </div>
-        </div>
-        <p id="sit-now" class="muted small now-line"></p>
-        <div id="goals" class="goals"></div>
-        <div id="timeline" class="timeline" role="img" aria-label="Timeline of the plan"></div>
-        <div id="unscheduled" class="unscheduled" hidden></div>
-        <div class="legend">
-          <span><i class="sw ok"></i>On track</span>
-          <span><i class="sw bad"></i>Problem</span>
-          <span><i class="sw off"></i>Cancelled</span>
-          <span><i class="sw blocked"></i>Place unavailable</span>
-          <span><i class="sw now"></i>Now</span>
-        </div>
-      </div>
-
-      <div class="panel activity-panel">
-        <div class="activity-head">
-          <h2>What Alexa did</h2>
-          <span id="turn-meta" class="muted small"></span>
-        </div>
-        <p class="muted small">Every step went through the MCP server; the engine’s verdict is shown on each.</p>
-        <ol id="activity" class="activity">
-          <li class="empty">Nothing yet. Pick a situation on the left, or just tell Alexa your plans.</li>
+    <div class="conversation" id="conversation">
+      <section class="welcome" id="welcome">
+        <div class="hero-orb" aria-hidden="true"><span></span></div>
+        <h1 class="welcome-title">What’s the plan?</h1>
+        <p class="welcome-text">Tell Alexa what you’re doing. She checks it against your calendar, the weather and live transport. When something clashes she finds a fix, a strict engine tests it, and nothing changes until you say yes.</p>
+        <ol class="how-row">
+          <li><span>1</span>You say it</li>
+          <li><span>2</span>The engine checks it</li>
+          <li><span>3</span>You approve the fix</li>
         </ol>
+        <div class="note" id="brain-note" hidden></div>
+        <div class="gallery-head">Try one of these</div>
+        <div class="gallery" id="gallery"></div>
+      </section>
+      <ol class="messages" id="messages" aria-live="polite"></ol>
+    </div>
+
+    <div class="dock">
+      <div class="script" id="script" hidden>
+        <div class="script-head">
+          <span id="script-title"></span>
+          <button class="link-btn" id="script-close" type="button">Hide</button>
+        </div>
+        <div class="script-steps" id="script-steps"></div>
       </div>
-    </section>
+      <form class="composer" id="composer" autocomplete="off">
+        <button class="icon-btn" id="mic" type="button" aria-label="Speak to Alexa" title="Speak (Chrome or Edge)">
+          <svg viewBox="0 0 24 24" width="20" height="20" aria-hidden="true"><rect x="9" y="3" width="6" height="11" rx="3" fill="none" stroke="currentColor" stroke-width="2"/><path d="M5 11a7 7 0 0 0 14 0M12 18v3" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>
+        </button>
+        <input id="input" type="text" placeholder="Message Alexa…" aria-label="Message to Alexa" maxlength="2000">
+        <button class="icon-btn" id="speak-toggle" type="button" aria-pressed="true" title="Alexa reads her replies aloud">
+          <svg viewBox="0 0 24 24" width="20" height="20" aria-hidden="true"><path d="M4 10v4h4l5 4V6l-5 4z" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round"/><path class="wave" d="M16.5 9a4 4 0 0 1 0 6" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>
+        </button>
+        <button class="send" id="send" type="submit" aria-label="Send">
+          <svg viewBox="0 0 24 24" width="18" height="18" aria-hidden="true"><path d="M12 19V5M6 11l6-6 6 6" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+        </button>
+      </form>
+      <p class="dock-hint">Alexa only changes a plan after you say yes. Every step she takes is listed under Activity.</p>
+    </div>
   </main>
 
-  <dialog id="how" class="how">
-    <form method="dialog">
-      <h2>How Situation Guard works</h2>
-      <p>Alexa listens and proposes. A strict engine decides. You approve.</p>
-      <ul class="how-list">
-        <li><strong>A plan is a set of commitments</strong> — who does what, when, where, with which shared things (a TV, a room), and what matters most.</li>
-        <li><strong>The engine checks rules</strong> — one person can’t be in two places, a shared TV fits one show, a deadline is a deadline, nothing happens in the past, a closed or rained-out place can’t be used.</li>
-        <li><strong>Reality comes in</strong> — delays, cancellations, weather, public holidays, your calendar.</li>
-        <li><strong>Fixes are tested before they are offered</strong> — Alexa only says an option works if the engine said so, and changes the plan only after your yes, then re-checks it.</li>
-      </ul>
-      <p class="muted small">Every action is an MCP tool call to the Situation Guard server, the same way Alexa+ or any MCP client would use it.</p>
-      <div class="how-actions"><button class="btn primary" value="close">Got it</button></div>
-    </form>
-  </dialog>
+  <!-- Plan inspector -->
+  <aside class="inspector" aria-label="The plan and what the engine decided">
+    <header class="insp-head">
+      <button class="icon-btn only-medium" id="back-chat" type="button" aria-label="Back to the conversation">
+        <svg viewBox="0 0 24 24" width="20" height="20"><path d="M15 6l-6 6 6 6" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+      </button>
+      <div class="insp-title">
+        <span class="eyebrow">Current plan</span>
+        <strong id="plan-name">…</strong>
+      </div>
+      <span class="verdict" id="sit-status">…</span>
+    </header>
+    <div class="insp-meta">
+      <span id="sit-now"></span>
+      <button class="btn btn-ghost btn-sm" id="reset" type="button">Reset plan</button>
+    </div>
 
-  <script src="/static/app.js"></script>
+    <div class="tabs" role="tablist">
+      <button role="tab" id="tab-timeline" class="tab active" aria-selected="true" aria-controls="panel-timeline" type="button">Timeline</button>
+      <button role="tab" id="tab-activity" class="tab" aria-selected="false" aria-controls="panel-activity" type="button">Activity <span class="count" id="activity-count" hidden></span></button>
+    </div>
+
+    <section class="panel" id="panel-timeline" role="tabpanel" aria-labelledby="tab-timeline">
+      <div class="goals" id="goals"></div>
+      <div class="timeline" id="timeline" role="img" aria-label="Timeline of the plan"></div>
+      <div class="unscheduled" id="unscheduled" hidden></div>
+      <div class="legend">
+        <span><i class="sw ok"></i>On track</span>
+        <span><i class="sw bad"></i>Problem</span>
+        <span><i class="sw off"></i>Cancelled</span>
+        <span><i class="sw blocked"></i>Place unavailable</span>
+        <span><i class="sw now"></i>Now</span>
+      </div>
+    </section>
+
+    <section class="panel" id="panel-activity" role="tabpanel" aria-labelledby="tab-activity" hidden>
+      <div class="activity-meta">
+        <span>Every step Alexa took through the MCP server, with the engine’s verdict.</span>
+        <span id="turn-meta"></span>
+      </div>
+      <ol class="activity" id="activity">
+        <li class="empty">Nothing yet. Start a conversation and each step will appear here.</li>
+      </ol>
+    </section>
+  </aside>
+</div>
+
+<div class="toast" id="toast" role="status" hidden></div>
+
+<dialog class="modal" id="confirm">
+  <form method="dialog">
+    <h2 id="confirm-title">Reset this plan?</h2>
+    <p id="confirm-text"></p>
+    <div class="modal-actions">
+      <button class="btn btn-ghost" value="cancel">Cancel</button>
+      <button class="btn btn-danger" value="ok" id="confirm-ok">Reset</button>
+    </div>
+  </form>
+</dialog>
+
+<dialog class="modal how" id="how">
+  <form method="dialog">
+    <h2>How Situation Guard works</h2>
+    <p class="lead">Alexa proposes. A strict engine decides. You approve.</p>
+    <ul class="how-list">
+      <li><b>Your plan</b> is a set of commitments: who does what, when and where, with which shared things (a TV, a room), and what matters most.</li>
+      <li><b>The engine checks rules</b>: one person can’t be in two places, a shared TV fits one show, a deadline is a deadline, nothing happens in the past, a closed or rained-out place can’t be used.</li>
+      <li><b>Reality comes in</b> from your location, your Google Calendar, live weather, public holidays and live transport.</li>
+      <li><b>Fixes are tested before they’re offered.</b> Alexa only says an option works if the engine said so, and changes your plan (and calendar) only after your yes.</li>
+    </ul>
+    <p class="fine">Every action is an MCP tool call to the Situation Guard server, exactly as Alexa+ or any MCP client would make it.</p>
+    <div class="modal-actions"><button class="btn btn-primary" value="close">Got it</button></div>
+  </form>
+</dialog>
+
+<script src="/static/app.js"></script>
 </body>
 </html>

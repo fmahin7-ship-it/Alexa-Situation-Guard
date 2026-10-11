@@ -97,13 +97,16 @@ const saved = {
   remove(k) { try { sessionStorage.removeItem(k); } catch { /* ignore */ } },
 };
 let sessionId = saved.get("sg-session");
-let situationId = saved.get("sg-situation") || "travel_friday";
+let situationId = saved.get("sg-situation");
 let busy = false;
 let config = null;
 let scenario = null;
 let scenarioStep = 0;
 let speakReplies = saved.get("sg-speak") !== "off";
 let position = null; // { latitude, longitude } once the user allows location
+let inflight = null; // AbortController of the message being answered
+const planStatus = {}; // plan id -> "ok" | "bad", for the sidebar dots
+let unseenSteps = 0;
 
 function el(tag, attrs = {}, ...children) {
   const node = document.createElement(tag);
@@ -159,9 +162,19 @@ function fmtDay(v, tz) {
 }
 
 // --- Alexa: chat, voice, script --------------------------------------------------------------
+const READY = "Ready";
+
 function setRing(state, text) {
-  $("ring").className = `ring ${state}`;
+  $("ring").className = `orb ${state}`;
   $("ring-status").textContent = text;
+}
+
+function toast(text) {
+  const t = $("toast");
+  t.textContent = text;
+  t.hidden = false;
+  clearTimeout(toast.timer);
+  toast.timer = setTimeout(() => { t.hidden = true; }, 2600);
 }
 
 function addMessage(kind, text) {
@@ -173,11 +186,11 @@ function addMessage(kind, text) {
 }
 
 function speak(text) {
-  if (!speakReplies || !("speechSynthesis" in window)) return setRing("idle", "Ready when you are");
+  if (!speakReplies || !("speechSynthesis" in window)) return setRing("idle", READY);
   window.speechSynthesis.cancel();
   const u = new SpeechSynthesisUtterance(text);
   u.onstart = () => setRing("speaking", "Speaking");
-  u.onend = u.onerror = () => setRing("idle", "Ready when you are");
+  u.onend = u.onerror = () => setRing("idle", READY);
   window.speechSynthesis.speak(u);
 }
 
@@ -189,10 +202,12 @@ async function send(text) {
   $("input").value = "";
   addMessage("user", text);
   const typing = addMessage("typing", "");
-  typing.append(el("i"), el("i"), el("i"));
+  typing.append(el("span", { class: "dots" }, el("i"), el("i"), el("i")));
   setRing("thinking", "Thinking…");
+  const controller = new AbortController();
+  inflight = controller;
   try {
-    const result = await api("/api/chat", { method: "POST", body: JSON.stringify({ text, session_id: sessionId, location: position }) });
+    const result = await api("/api/chat", { method: "POST", signal: controller.signal, body: JSON.stringify({ text, session_id: sessionId, location: position }) });
     sessionId = result.session_id;
     saved.set("sg-session", sessionId);
     typing.remove();
@@ -205,12 +220,16 @@ async function send(text) {
     speak(result.reply);
   } catch (error) {
     typing.remove();
+    if (controller.signal.aborted) return; // cancelled by New conversation or Reset
     addMessage("error", `Something went wrong: ${error.message}`);
-    setRing("idle", "Ready when you are");
+    setRing("idle", READY);
   } finally {
-    busy = false;
-    $("send").disabled = false;
-    refreshSituation();
+    if (inflight === controller) {
+      inflight = null;
+      busy = false;
+      $("send").disabled = false;
+      refreshSituation();
+    }
   }
 }
 
@@ -227,7 +246,7 @@ function setUpMicrophone() {
   rec.interimResults = false;
   let listening = false;
   rec.onresult = (e) => send(e.results[0][0].transcript);
-  rec.onend = () => { listening = false; mic.classList.remove("listening"); if (!busy) setRing("idle", "Ready when you are"); };
+  rec.onend = () => { listening = false; mic.classList.remove("listening"); if (!busy) setRing("idle", READY); };
   rec.onerror = (e) => { if (!["no-speech", "aborted"].includes(e.error)) addMessage("error", `Microphone: ${e.error}`); };
   mic.addEventListener("click", () => {
     if (listening) return rec.stop();
@@ -246,12 +265,13 @@ function needsRealModel(s) {
 function renderGallery() {
   $("gallery").replaceChildren(
     ...SCENARIOS.map((s) => {
+      const tag = needsRealModel(s) ? ["", "needs AI model"] : s.live ? ["live", "Live"] : s.scripted ? ["offline", "Offline"] : null;
       const card = el(
-        "button", { class: "card", type: "button" },
+        "button", { class: `card${s.live ? " featured" : ""}`, type: "button" },
         el("span", { class: "card-icon" }, icon(s.icon)),
         el("span", { class: "card-title" }, s.title),
         el("span", { class: "card-text" }, s.text),
-        needsRealModel(s) ? el("span", { class: "tag" }, "needs an AI model") : s.live ? el("span", { class: "tag" }, "live data") : s.scripted ? el("span", { class: "tag" }, "works offline") : null,
+        tag ? el("span", { class: `tag ${tag[0]}` }, tag[1]) : null,
       );
       card.addEventListener("click", () => startScenario(s));
       return card;
@@ -272,7 +292,7 @@ function renderScript() {
   const box = $("script");
   if (!scenario) { box.hidden = true; return; }
   box.hidden = false;
-  $("script-title").textContent = `${scenario.title} — say these, one at a time`;
+  $("script-title").textContent = `${scenario.title}: tap each line in order, or say it`;
   $("script-steps").replaceChildren(
     ...scenario.steps.map((text, i) => {
       const b = el("button", { class: `say${i === scenarioStep ? " next" : ""}${i < scenarioStep ? " done" : ""}`, type: "button" },
@@ -290,16 +310,26 @@ function advanceScript(sentText) {
   renderScript();
 }
 
+function cancelReply() {
+  if (inflight) inflight.abort();
+  inflight = null;
+  busy = false;
+  $("send").disabled = false;
+}
+
 async function newChat(clearScenario = true) {
+  cancelReply();
   sessionId = null;
   saved.remove("sg-session");
   $("messages").replaceChildren();
   $("welcome").hidden = false;
-  $("activity").replaceChildren(el("li", { class: "empty" }, "Nothing yet. Pick a situation on the left, or just tell Alexa your plans."));
+  $("activity").replaceChildren(el("li", { class: "empty" }, "Nothing yet. Start a conversation and each step will appear here."));
   $("turn-meta").textContent = "";
+  unseenSteps = 0;
+  showCount();
   if (clearScenario) { scenario = null; renderScript(); }
   if ("speechSynthesis" in window) window.speechSynthesis.cancel();
-  setRing("idle", "Ready when you are");
+  setRing("idle", READY);
 }
 
 // --- activity feed: every MCP tool call, in plain words ---------------------------------------
@@ -369,7 +399,14 @@ function describe(step) {
   }
 }
 
+function showCount() {
+  const c = $("activity-count");
+  c.hidden = !unseenSteps;
+  c.textContent = unseenSteps;
+}
+
 function renderActivity(said, steps) {
+  if (!$("tab-activity").classList.contains("active")) { unseenSteps += steps.length; showCount(); }
   const list = $("activity");
   list.querySelector(".empty")?.remove();
   list.append(el("li", { class: "turn" }, `You: “${said}”`));
@@ -402,13 +439,38 @@ async function selectSituation(id) {
   await loadConfig();
 }
 
+function currentPlan() {
+  return (config && config.situations.find((p) => p.id === situationId)) || null;
+}
+
+function renderPlanList() {
+  $("plan-list").replaceChildren(
+    ...config.situations.map((p) => {
+      const b = el("button", { class: `plan-item${p.id === situationId ? " active" : ""}`, type: "button" },
+        el("span", { class: `pi-dot ${planStatus[p.id] || ""}` }),
+        el("span", { class: "pi-name" }, p.name),
+        p.predefined ? el("span", { class: "pi-tag" }, "sample") : null);
+      b.addEventListener("click", () => {
+        situationId = p.id;
+        saved.set("sg-situation", p.id);
+        closeNav();
+        renderPlanList();
+        refreshSituation();
+      });
+      return el("li", {}, b);
+    })
+  );
+  const plan = currentPlan();
+  $("reset").textContent = plan && !plan.predefined ? "Delete plan" : "Reset plan";
+}
+
 async function refreshSituation() {
   try {
     const { view } = await api(`/api/situations/${encodeURIComponent(situationId)}`);
     renderPlan(view);
   } catch (error) {
     $("sit-status").textContent = "Unavailable";
-    $("sit-status").className = "verdict-pill";
+    $("sit-status").className = "verdict";
     $("timeline").replaceChildren(el("div", { class: "tl-empty" }, error.message));
   }
 }
@@ -417,10 +479,17 @@ function renderPlan(view) {
   const tz = view.timezone;
   const live = view.commitments.filter((c) => c.status !== "cancelled");
   const pill = $("sit-status");
-  if (!live.length) { pill.textContent = "Empty plan"; pill.className = "verdict-pill"; }
-  else if (view.feasible) { pill.textContent = "✓ Plan works"; pill.className = "verdict-pill ok"; }
-  else { pill.textContent = `✗ ${view.broken_commitment_ids.length} problem${view.broken_commitment_ids.length === 1 ? "" : "s"}`; pill.className = "verdict-pill bad"; }
-  $("sit-now").textContent = view.now ? `Now: ${fmtDay(view.now, tz)} ${fmtTime(view.now, tz)}${tz ? ` · ${tz}` : ""}` : "Time not set yet";
+  const n = view.broken_commitment_ids.length;
+  const status = !live.length ? "" : view.feasible ? "ok" : "bad";
+  pill.textContent = !live.length ? "Empty" : view.feasible ? "Works" : `${n} problem${n === 1 ? "" : "s"}`;
+  pill.className = `verdict ${status}`;
+  $("plan-dot").className = `mini-dot ${status}`;
+  $("plan-name").textContent = view.name;
+  if (planStatus[view.id] !== status) {
+    planStatus[view.id] = status;
+    if (config) renderPlanList();
+  }
+  $("sit-now").textContent = view.now ? `${fmtDay(view.now, tz)} · ${fmtTime(view.now, tz)}${tz ? ` · ${tz.replace("_", " ")}` : ""}` : "No current time set";
 
   $("goals").replaceChildren(
     ...view.goals.map((g) => el("span", { class: `goal ${g.at_risk ? "at-risk" : "safe"}` }, icon("star"), g.description, g.at_risk ? " — at risk" : ""))
@@ -477,7 +546,7 @@ function renderTimeline(view) {
   const tickLines = (withLabels) => ticks.map((t, i) => el("div", { class: "tick", style: `left:${pct(t)}` }, withLabels ? el("span", {}, labels[i]) : null));
   const nowLine = () => (nowMs != null && nowMs >= lo && nowMs <= hi ? el("div", { class: "now-marker", style: `left:${pct(nowMs)}` }) : null);
 
-  const rows = [el("div", { class: "tl-axis" }, el("div", { class: "tl-label" }, "Who / where"), el("div", { class: "tl-track" }, ...tickLines(true)))];
+  const rows = [el("div", { class: "tl-axis" }, el("div", { class: "tl-label" }, "Who"), el("div", { class: "tl-track" }, ...tickLines(true)))];
 
   const owners = [...new Set(timed.map((c) => c.owner_id))];
   for (const owner of owners) {
@@ -510,6 +579,11 @@ function brainName(brain) {
   return brain;
 }
 
+function setConn(rowId, labelId, text, state) {
+  $(labelId).textContent = text;
+  $(rowId).className = state;
+}
+
 async function loadConfig() {
   try {
     config = await api("/api/config");
@@ -517,32 +591,51 @@ async function loadConfig() {
     addMessage("error", `Could not load settings: ${error.message}`);
     return;
   }
-  $("brain-label").textContent = brainName(config.brain);
-  $("brain-chip").className = `status-chip${config.brain_live ? " live" : ""}`;
-  const liveSources = Object.entries(config.modes || {}).filter(([, m]) => m === "live").map(([k]) => k);
-  if (config.calendar === "google") liveSources.push("Google Calendar");
-  $("data-label").textContent = liveSources.length ? `Live: ${liveSources.join(", ")}` : "Recorded data";
-  if (config.calendar === "google-signed-out") $("data-label").textContent += " · Google Calendar not signed in";
-  $("data-chip").className = `status-chip${liveSources.length ? " live" : ""}`;
+  setConn("conn-brain", "brain-label", brainName(config.brain), config.brain_live ? "on" : "");
+  const modes = config.modes || {};
+  const live = ["weather", "travel", "places"].filter((k) => modes[k] === "live");
+  setConn("conn-data", "data-label", live.length === 3 ? "Live" : live.length ? `Live: ${live.join(", ")}` : "Recorded samples", live.length ? "on" : "");
+  const cal = { google: ["Google Calendar", "on"], "google-signed-out": ["Google: not signed in", "warn"], off: ["Not connected", ""] }[config.calendar] || ["Not connected", ""];
+  setConn("conn-cal", "cal-label", cal[0], cal[1]);
 
   const note = $("brain-note");
   if (config.brain.startsWith("scripted")) {
     note.hidden = false;
-    note.replaceChildren("The free demo brain only knows the “Train running late” story. For any other request, set ", el("code", {}, "SITUATION_GUARD_LLM=openai"), " (or bedrock) in .env.");
+    note.replaceChildren("Alexa is running on the free demo brain, which only knows the “Train running late” story. For everything else set ", el("code", {}, "SITUATION_GUARD_LLM=openai"), " in .env and restart.");
   } else note.hidden = true;
   renderGallery();
 
-  const select = $("situation-select");
-  select.replaceChildren(...config.situations.map((s) => el("option", { value: s.id }, s.name)));
-  if (!config.situations.some((s) => s.id === situationId) && config.situations.length) situationId = config.situations[0].id;
-  select.value = situationId;
+  if (!config.situations.some((p) => p.id === situationId) && config.situations.length) situationId = config.situations[0].id;
+  renderPlanList();
   refreshSituation();
 }
 
 function setUpControls() {
   $("composer").addEventListener("submit", (e) => { e.preventDefault(); send($("input").value); });
-  $("situation-select").addEventListener("change", (e) => { situationId = e.target.value; saved.set("sg-situation", situationId); refreshSituation(); });
-  $("new-chat").addEventListener("click", () => newChat(true));
+  $("new-chat").addEventListener("click", async () => {
+    await newChat(true);
+    closeNav();
+    setView("chat");
+    toast("New conversation started. Your plans are kept.");
+    $("input").focus();
+  });
+  for (const [id, panel] of [["tab-timeline", "panel-timeline"], ["tab-activity", "panel-activity"]]) {
+    $(id).addEventListener("click", () => {
+      for (const t of ["tab-timeline", "tab-activity"]) {
+        $(t).classList.toggle("active", t === id);
+        $(t).setAttribute("aria-selected", String(t === id));
+      }
+      $("panel-timeline").hidden = panel !== "panel-timeline";
+      $("panel-activity").hidden = panel !== "panel-activity";
+      if (panel === "panel-activity") { unseenSteps = 0; showCount(); }
+      else refreshSituation();
+    });
+  }
+  $("show-plan").addEventListener("click", () => setView("plan"));
+  $("back-chat").addEventListener("click", () => setView("chat"));
+  $("nav-open").addEventListener("click", () => $("app").classList.add("nav-open"));
+  $("nav-close").addEventListener("click", closeNav);
+  $("scrim").addEventListener("click", closeNav);
   $("script-close").addEventListener("click", () => { scenario = null; renderScript(); });
   $("how-btn").addEventListener("click", () => $("how").showModal());
   const toggle = $("speak-toggle");
@@ -554,31 +647,64 @@ function setUpControls() {
     if (!speakReplies && "speechSynthesis" in window) window.speechSynthesis.cancel();
   });
   $("reset").addEventListener("click", async () => {
-    if (busy) return;
+    const plan = currentPlan();
+    if (!plan) return;
+    const deleting = !plan.predefined;
+    $("confirm-title").textContent = deleting ? `Delete “${plan.name}”?` : `Reset “${plan.name}”?`;
+    $("confirm-text").textContent = deleting
+      ? "This plan was made in conversation. It will be removed, and the conversation starts over. Your Google Calendar is not changed."
+      : "This sample plan goes back to how it started, and the conversation starts over.";
+    $("confirm-ok").textContent = deleting ? "Delete plan" : "Reset plan";
+    const answer = await ask($("confirm"));
+    if (answer !== "ok") return;
+    cancelReply();
     try {
-      const r = await api("/api/reset", { method: "POST", body: JSON.stringify({ situation_id: situationId, session_id: sessionId }) });
-      if (r.outcome === "deleted") situationId = "travel_friday";
+      const r = await api("/api/reset", { method: "POST", body: JSON.stringify({ situation_id: plan.id, session_id: sessionId }) });
+      if (r.outcome === "deleted") { delete planStatus[plan.id]; situationId = null; }
     } catch (error) {
-      addMessage("error", `Reset failed: ${error.message}`);
+      toast(`Couldn’t reset: ${error.message}`);
       return;
     }
     await newChat(false);
     await loadConfig();
+    toast(deleting ? "Plan deleted." : "Plan reset to its starting point.");
   });
 }
 
+// Resolves with the value of the button pressed ("cancel" for Escape or a click outside).
+function ask(dialog) {
+  return new Promise((resolve) => {
+    const done = (value) => {
+      dialog.removeEventListener("click", onClick);
+      dialog.removeEventListener("cancel", onCancel);
+      if (dialog.open) dialog.close(value);
+      resolve(value);
+    };
+    const onClick = (e) => {
+      const button = e.target.closest("button[value]");
+      if (button) { e.preventDefault(); done(button.value); }
+      else if (e.target === dialog) done("cancel");
+    };
+    const onCancel = (e) => { e.preventDefault(); done("cancel"); };
+    dialog.addEventListener("click", onClick);
+    dialog.addEventListener("cancel", onCancel);
+    dialog.showModal();
+  });
+}
+
+function setView(view) { $("app").dataset.view = view; if (view === "plan") refreshSituation(); }
+function closeNav() { $("app").classList.remove("nav-open"); }
+
 // Where the user is: the browser asks once; Alexa uses it for "here", trips and weather.
 function setUpLocation() {
-  const label = $("loc-label");
-  if (!("geolocation" in navigator)) { label.textContent = "Location unavailable"; return; }
-  label.textContent = "Finding you…";
+  if (!("geolocation" in navigator)) { setConn("conn-loc", "loc-label", "Not available", ""); return; }
+  setConn("conn-loc", "loc-label", "Asking…", "warn");
   navigator.geolocation.watchPosition(
     (p) => {
       position = { latitude: p.coords.latitude, longitude: p.coords.longitude };
-      label.textContent = "Using your location";
-      $("loc-chip").className = "status-chip live";
+      setConn("conn-loc", "loc-label", `Shared · ±${Math.round(p.coords.accuracy)} m`, "on");
     },
-    () => { position = null; label.textContent = "Location off"; $("loc-chip").className = "status-chip"; },
+    () => { position = null; setConn("conn-loc", "loc-label", "Off: allow it in the browser", ""); },
     { enableHighAccuracy: false, maximumAge: 300000, timeout: 20000 }
   );
 }

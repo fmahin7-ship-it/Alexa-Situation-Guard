@@ -36,6 +36,7 @@ def client(tmp_path):
 def test_page_and_its_files_are_served(client):
     page = client.get("/")
     assert page.status_code == 200 and "<title>Situation Guard</title>" in page.text
+    assert "/static/app.js?v=" in page.text and page.headers["cache-control"] == "no-cache"
     assert client.get("/static/app.js").status_code == 200
     assert client.get("/static/style.css").status_code == 200
 
@@ -45,7 +46,7 @@ def test_config_shows_brain_travel_and_situations(client, monkeypatch):
     config = client.get("/api/config").json()
     assert config["brain"] == "scripted" and config["brain_live"] is False
     assert config["travel"] == "recorded"
-    assert {"id": TRIP, "name": "Friday airport trip"} in config["situations"]
+    assert {"id": TRIP, "name": "Friday airport trip", "predefined": True} in config["situations"]
 
 
 def test_two_turn_conversation_through_the_mcp_tools(client):

@@ -82,6 +82,8 @@ def test_tools_are_listed(session):
         "check_weather",
         "check_public_holidays",
         "import_calendar",
+        "add_to_calendar",
+        "get_weather",
     ]
 
 
@@ -283,4 +285,4 @@ def test_http_mcp_speaks_protocol_2025_11_25_and_keeps_old_endpoints():
 
         rpc(client, {"jsonrpc": "2.0", "method": "notifications/initialized"}, session_id)
         _, listed = rpc(client, {"jsonrpc": "2.0", "id": 2, "method": "tools/list"}, session_id)
-        assert len(listed["result"]["tools"]) == 15
+        assert len(listed["result"]["tools"]) == 17

@@ -32,6 +32,34 @@ class Forecast(BaseModel):
     attribution: str = ""
 
 
+class DayForecast(BaseModel):
+    date: str
+    conditions: str
+    min_c: Optional[float] = None
+    max_c: Optional[float] = None
+    rain_chance: Optional[int] = Field(None, description="Highest hourly chance of rain that day, %")
+
+
+class Conditions(BaseModel):
+    """The weather right now and the days ahead, for answering "what's the weather"."""
+
+    provider: str
+    live: bool
+    time: str
+    temperature_c: Optional[float] = None
+    feels_like_c: Optional[float] = None
+    conditions: str = ""
+    days: List[DayForecast] = Field(default_factory=list)
+    attribution: str = ""
+
+
+class GeoPoint(BaseModel):
+    name: str
+    latitude: float
+    longitude: float
+    timezone: Optional[str] = None
+
+
 class WeatherProvider(Protocol):
     name: str
     live: bool
@@ -39,6 +67,38 @@ class WeatherProvider(Protocol):
     def forecast(self, latitude: float, longitude: float, timezone: str) -> Forecast:
         """Hourly forecast for the next days, or raise WeatherError."""
         ...
+
+    def conditions(self, latitude: float, longitude: float, timezone: str) -> Conditions:
+        """Now and the next days, or raise WeatherError."""
+        ...
+
+    def find(self, name: str) -> GeoPoint:
+        """A town or city by name, or raise WeatherError."""
+        ...
+
+
+# WMO weather codes, as used by Open-Meteo, in plain words.
+WMO_WORDS = {
+    0: "clear", 1: "mostly clear", 2: "partly cloudy", 3: "cloudy", 45: "foggy", 48: "foggy",
+    51: "light drizzle", 53: "drizzle", 55: "heavy drizzle", 56: "freezing drizzle", 57: "freezing drizzle",
+    61: "light rain", 63: "rain", 65: "heavy rain", 66: "freezing rain", 67: "freezing rain",
+    71: "light snow", 73: "snow", 75: "heavy snow", 77: "snow grains", 80: "light showers", 81: "showers",
+    82: "heavy showers", 85: "snow showers", 86: "snow showers", 95: "thunderstorms", 96: "thunderstorms with hail",
+    99: "thunderstorms with hail",
+}
+
+
+def describe_code(code: Optional[int]) -> str:
+    return WMO_WORDS.get(code, "unknown") if code is not None else "unknown"
+
+
+def rain_at(forecast: Forecast, moment: datetime) -> Optional[HourlyForecast]:
+    """The forecast hour containing `moment`, if the forecast covers it."""
+    for hour in forecast.hours:
+        start = datetime.fromisoformat(hour.time)
+        if start <= moment < start + timedelta(hours=1):
+            return hour
+    return None
 
 
 def wet_windows(

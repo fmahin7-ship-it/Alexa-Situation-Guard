@@ -8,6 +8,7 @@ from mcp.server.mcpserver import MCPServer
 from mcp.server.mcpserver.exceptions import ToolError
 from mcp_types import ToolAnnotations
 
+from app.calendars.sync import push_moves
 from app.core.candidate import AddCommitment, apply_edits, simulate
 from app.core.feasibility import situation_errors
 from app.mcp.context import ToolContext, evaluate, offer_for
@@ -103,6 +104,7 @@ def register(server: MCPServer, ctx: ToolContext) -> None:
         if errors:
             return ConfirmView(label=label, confirmed=False, verified=False, reasons=errors)
 
+        previous = state.situation
         state.situation = updated
         state.offers, state.offered_for = [], None
         state.log.append(LogEntry(kind="option_confirmed", detail=f"{label}: {offer.summary}"))
@@ -120,4 +122,5 @@ def register(server: MCPServer, ctx: ToolContext) -> None:
             verified=recheck.feasible and not missing,
             feasible=recheck.feasible,
             reasons=reasons,
+            calendar_updates=push_moves(ctx.calendar, previous, saved),
         )

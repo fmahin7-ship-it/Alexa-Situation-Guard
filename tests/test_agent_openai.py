@@ -175,4 +175,4 @@ def test_fake_openai_model_drives_the_real_tools_end_to_end(tmp_path):
     last = fake.requests[-1]["messages"]
     assert [m["role"] for m in last] == ["system", "user", "assistant", "tool", "assistant", "tool", "assistant", "tool"]
     assert json.loads(last[-1]["content"])["feasible"] is True
-    assert len(fake.requests[0]["tools"]) == 15
+    assert len(fake.requests[0]["tools"]) == 17

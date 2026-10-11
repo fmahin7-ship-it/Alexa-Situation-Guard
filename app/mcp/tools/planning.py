@@ -23,9 +23,9 @@ from app.core.candidate import (
 from app.core.feasibility import time_form_errors
 from app.core.models import Commitment, Dependency, Goal, Resource, Situation
 from app.core.timeutil import shift_moment, zone_of
-from app.mcp.context import ToolContext, apply_and_save, slug, unique
+from app.mcp.context import ToolContext, apply_and_save, real_now, slug, unique
 from app.mcp.views import PlanEditView
-from app.situations.places import place_named
+from app.situations.places import place_named, plain_place
 from app.situations.store import LogEntry, SessionState
 
 
@@ -43,17 +43,33 @@ def apply_plan_edits(
     )
 
 
+def _coordinates(latitude: Optional[float], longitude: Optional[float]) -> Optional[tuple]:
+    """Both or neither, and on the globe."""
+    if latitude is None and longitude is None:
+        return None
+    if latitude is None or longitude is None:
+        raise ToolError("Give both latitude and longitude, or neither")
+    if not (-90 <= latitude <= 90 and -180 <= longitude <= 180):
+        raise ToolError(f"({latitude}, {longitude}) is not a place on Earth")
+    return latitude, longitude
+
+
 def register(server: MCPServer, ctx: ToolContext) -> None:
     @server.tool()
     def create_situation(name: str, timezone: str = "Australia/Sydney", now: Optional[str] = None) -> PlanEditView:
         """
-        Start a new, empty plan, e.g. "Dad's airport trip". `now` is the current time with offset
-        (e.g. 2026-10-02T09:00:00+10:00). Returns its situation_id for the other tools.
+        Start a new, empty plan, e.g. "Dad's airport trip". `now` is "live" for the user's real life
+        (the plan then always uses the real current time), or a fixed time with offset
+        (e.g. 2026-10-02T09:00:00+10:00) for a pretend or past situation. Returns its situation_id.
         """
+        live = now is not None and now.strip().lower() == "live"
+        if live:
+            now = real_now(timezone)
         errors = time_form_errors(Situation(id="draft", name=name, timezone=timezone, now=now))
         if errors:
             raise ToolError("Not created: " + "; ".join(errors))
         state = ctx.store.create(name, timezone=timezone, now=now)
+        state.live_clock = live
         state.log.append(LogEntry(kind="plan_created", detail=name))
         ctx.store.save(state)
         return PlanEditView(situation_id=state.situation.id, added_id=state.situation.id, feasible=True)
@@ -65,18 +81,27 @@ def register(server: MCPServer, ctx: ToolContext) -> None:
         outdoor: bool = False,
         closes_on_public_holidays: bool = False,
         look_up: bool = False,
+        latitude: Optional[float] = None,
+        longitude: Optional[float] = None,
     ) -> PlanEditView:
         """
         Add a place by name: "the drawing room", "the office", "the garden", "Central Station", ...
         Returns its place id. Mark `outdoor` if weather matters there, `closes_on_public_holidays` for
         places like an office. Set `look_up` for real addresses or landmarks so they get map coordinates
-        (needed for travel and weather); rooms and nicknames do not need it. Adding an existing place
-        again updates those marks.
+        (needed for travel and weather); rooms and nicknames do not need it. Give `latitude` and
+        `longitude` when they are known exactly, e.g. the user's current location. Adding an existing
+        place again updates those marks (and its coordinates).
         """
+        exact = _coordinates(latitude, longitude)
         state = ctx.load(situation_id)
         near = next(([loc.longitude, loc.latitude] for loc in state.situation.locations if loc.latitude is not None), None)
-        place, notes = place_named(name, look_up=look_up, lookup=ctx.place_lookup, near=near)
+        if exact:
+            place, notes = plain_place(name).model_copy(update={"latitude": exact[0], "longitude": exact[1]}), []
+        else:
+            place, notes = place_named(name, look_up=look_up, lookup=ctx.place_lookup, near=near)
         flags = {"outdoor": outdoor or None, "closes_on_public_holidays": closes_on_public_holidays or None}
+        if exact:
+            flags.update(latitude=exact[0], longitude=exact[1])
         existing = next((loc for loc in state.situation.locations if loc.id == place.id), None)
         if existing is not None:
             return apply_plan_edits(

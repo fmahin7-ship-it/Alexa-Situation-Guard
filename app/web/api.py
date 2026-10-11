@@ -22,6 +22,7 @@ from fastapi.responses import FileResponse
 from pydantic import BaseModel, Field
 
 from app.agent.llm import LLMProvider, Message, make_llm_provider
+from app.calendars.google import make_calendar
 from app.agent.loop import Step, run_turn
 from app.agent.prompt import system_prompt
 from app.agent.tool_runner import McpToolRunner
@@ -69,9 +70,15 @@ def _store(request: Request) -> SituationStore:
 # --- API -----------------------------------------------------------------------
 
 
+class Position(BaseModel):
+    latitude: float = Field(..., ge=-90, le=90)
+    longitude: float = Field(..., ge=-180, le=180)
+
+
 class ChatRequest(BaseModel):
     text: str = Field(..., min_length=1, max_length=2000)
     session_id: Optional[str] = None
+    location: Optional[Position] = Field(None, description="Where the device is, if the user shared it")
 
 
 class ChatResponse(BaseModel):
@@ -89,7 +96,18 @@ class Config(BaseModel):
     brain_live: bool
     travel: str
     modes: Dict[str, str] = Field(default_factory=dict, description="Each outside source: recorded/known or live")
+    calendar: str = Field("off", description="off, google, or google-signed-out")
     situations: List[Dict[str, str]]
+
+
+def _calendar_status() -> str:
+    try:
+        calendar = make_calendar()
+    except ValueError:
+        return "off"
+    if calendar is None:
+        return "off"
+    return "google" if calendar.signed_in else "google-signed-out"
 
 
 @router.get("/")
@@ -116,6 +134,7 @@ def config(request: Request):
             "holidays": os.environ.get(HOLIDAYS_ENV, "recorded"),
             "places": os.environ.get(PLACES_ENV, "known"),
         },
+        calendar=_calendar_status(),
         situations=situations,
     )
 
@@ -130,7 +149,8 @@ async def chat(body: ChatRequest, request: Request):
         provider = _llm(request)
         try:
             async with _tool_connector(request)() as client:
-                instructions = system_prompt(os.environ.get(TIMEZONE_ENV, DEFAULT_TIMEZONE))
+                here = (body.location.latitude, body.location.longitude) if body.location else None
+                instructions = system_prompt(os.environ.get(TIMEZONE_ENV, DEFAULT_TIMEZONE), location=here)
                 turn = await run_turn(provider, McpToolRunner(client), history, body.text, system=instructions)
         except Exception as exc:
             raise HTTPException(status_code=502, detail=f"Could not reach the MCP server: {exc}") from exc

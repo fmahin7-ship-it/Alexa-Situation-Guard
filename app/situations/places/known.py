@@ -49,9 +49,9 @@ def find_place(query: str) -> Optional[Location]:
     for entry in _KNOWN:
         names = [_normalise(entry["location"].name)] + [_normalise(a) for a in entry["aliases"]]
         for name in names:
-            matched = name == wanted or re.search(rf"\b{re.escape(name)}\b", wanted) or re.search(
-                rf"\b{re.escape(wanted)}\b", name
-            )
+            # The known name inside what was said ("the airport T1 please"), never the other way
+            # round: "Sydney" alone is a city, not Sydney Airport.
+            matched = name == wanted or re.search(rf"\b{re.escape(name)}\b", wanted)
             if matched and len(name) > best_len:
                 best, best_len = entry["location"], len(name)
     return best.model_copy(deep=True) if best else None

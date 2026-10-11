@@ -7,6 +7,16 @@ const $ = (id) => document.getElementById(id);
 // --- scenarios: what people can try ------------------------------------------------------
 const SCENARIOS = [
   {
+    id: "real", icon: "star", title: "Your real day", live: true,
+    text: "Your location, real weather, your Google Calendar, live public transport.",
+    steps: [
+      "What's the temperature today?",
+      "Schedule a meeting with my boss tomorrow at 2pm for an hour.",
+      "Tomorrow I also want to talk with one of my teammates at 2pm.",
+      "Tomorrow at 2pm I want to go from here to Sydney Airport by public transport.",
+    ],
+  },
+  {
     id: "tv", icon: "tv", title: "Two people, one TV",
     text: "No times given, one TV. Watch the clash get caught and fixed.",
     steps: ["I want to watch Traitors 2 on the drawing room TV.", "My wife wants to watch Traitors 1 on the same TV.", "Yes, do that."],
@@ -93,6 +103,7 @@ let config = null;
 let scenario = null;
 let scenarioStep = 0;
 let speakReplies = saved.get("sg-speak") !== "off";
+let position = null; // { latitude, longitude } once the user allows location
 
 function el(tag, attrs = {}, ...children) {
   const node = document.createElement(tag);
@@ -181,7 +192,7 @@ async function send(text) {
   typing.append(el("i"), el("i"), el("i"));
   setRing("thinking", "Thinking…");
   try {
-    const result = await api("/api/chat", { method: "POST", body: JSON.stringify({ text, session_id: sessionId }) });
+    const result = await api("/api/chat", { method: "POST", body: JSON.stringify({ text, session_id: sessionId, location: position }) });
     sessionId = result.session_id;
     saved.set("sg-session", sessionId);
     typing.remove();
@@ -240,7 +251,7 @@ function renderGallery() {
         el("span", { class: "card-icon" }, icon(s.icon)),
         el("span", { class: "card-title" }, s.title),
         el("span", { class: "card-text" }, s.text),
-        needsRealModel(s) ? el("span", { class: "tag" }, "needs an AI model") : s.scripted ? el("span", { class: "tag" }, "works offline") : null,
+        needsRealModel(s) ? el("span", { class: "tag" }, "needs an AI model") : s.live ? el("span", { class: "tag" }, "live data") : s.scripted ? el("span", { class: "tag" }, "works offline") : null,
       );
       card.addEventListener("click", () => startScenario(s));
       return card;
@@ -332,16 +343,24 @@ function describe(step) {
         : { ...d, cls: "bad", icon: "cross", title: `Engine checked option ${a.label}`, details: [r.summary], badge: ["bad", r.applied === false ? "can't apply" : "doesn't work"], reason: (r.reasons || [])[0] };
     case "confirm_option": {
       const ok = r.confirmed && r.verified;
-      return { ...d, cls: ok ? "ok" : "bad", icon: ok ? "swap" : "cross", title: ok ? `Switched the plan to option ${a.label}` : `Didn’t switch to option ${a.label}`, badge: ok ? ["ok", "verified"] : ["bad", "refused"], reason: ok ? null : (r.reasons || [])[0] };
+      return { ...d, cls: ok ? "ok" : "bad", icon: ok ? "swap" : "cross", title: ok ? `Switched the plan to option ${a.label}` : `Didn’t switch to option ${a.label}`, details: r.calendar_updates || [], badge: ok ? ["ok", "verified"] : ["bad", "refused"], reason: ok ? null : (r.reasons || [])[0] };
     }
+    case "get_weather": {
+      const day = r.day;
+      const lines = [`${r.temperature_c ?? "–"}°C now, ${r.conditions}${r.feels_like_c != null ? ` (feels like ${r.feels_like_c}°C)` : ""}`];
+      if (day) lines.push(`${day.date}: ${day.conditions}, ${day.min_c ?? "–"}–${day.max_c ?? "–"}°C, ${day.rain_chance ?? "–"}% chance of rain`);
+      return { ...d, cls: "world", icon: "rain", title: `Weather in ${r.place}`, details: lines, badge: r.live ? ["ok", "live"] : null, notes: [r.attribution].filter(Boolean) };
+    }
+    case "add_to_calendar":
+      return { ...d, cls: "ok", icon: "calendar", title: "Added to your Google Calendar", details: [`${r.title} · ${fmtDay(r.start)} ${fmtTime(r.start)}–${fmtTime(r.end)}`], badge: ["ok", "saved"] };
     case "check_weather":
     case "check_public_holidays":
     case "import_calendar": {
-      const names = { check_weather: ["rain", "Checked the weather"], check_public_holidays: ["flag", "Checked public holidays"], import_calendar: ["calendar", "Imported your calendar"] };
+      const names = { check_weather: ["rain", "Checked the weather"], check_public_holidays: ["flag", "Checked public holidays"], import_calendar: ["calendar", r.source === "google-calendar" ? "Read your Google Calendar" : "Imported your calendar"] };
       const [ic, title] = names[step.tool];
       const broke = r.feasible_before && !r.feasible_after;
       return {
-        ...d, cls: broke ? "bad" : "world", icon: ic, title, details: r.changes && r.changes.length ? r.changes : ["nothing new"],
+        ...d, cls: broke ? "bad" : "world", icon: ic, title, details: [...(r.changes && r.changes.length ? r.changes : r.advice && r.advice.length ? [] : ["nothing new"]), ...(r.advice || [])],
         badge: broke ? ["bad", "plan broken"] : null, reason: broke ? (r.reasons || [])[0] : null,
         notes: [...(r.notes || []), r.attribution].filter(Boolean),
       };
@@ -501,7 +520,9 @@ async function loadConfig() {
   $("brain-label").textContent = brainName(config.brain);
   $("brain-chip").className = `status-chip${config.brain_live ? " live" : ""}`;
   const liveSources = Object.entries(config.modes || {}).filter(([, m]) => m === "live").map(([k]) => k);
+  if (config.calendar === "google") liveSources.push("Google Calendar");
   $("data-label").textContent = liveSources.length ? `Live: ${liveSources.join(", ")}` : "Recorded data";
+  if (config.calendar === "google-signed-out") $("data-label").textContent += " · Google Calendar not signed in";
   $("data-chip").className = `status-chip${liveSources.length ? " live" : ""}`;
 
   const note = $("brain-note");
@@ -546,6 +567,23 @@ function setUpControls() {
   });
 }
 
+// Where the user is: the browser asks once; Alexa uses it for "here", trips and weather.
+function setUpLocation() {
+  const label = $("loc-label");
+  if (!("geolocation" in navigator)) { label.textContent = "Location unavailable"; return; }
+  label.textContent = "Finding you…";
+  navigator.geolocation.watchPosition(
+    (p) => {
+      position = { latitude: p.coords.latitude, longitude: p.coords.longitude };
+      label.textContent = "Using your location";
+      $("loc-chip").className = "status-chip live";
+    },
+    () => { position = null; label.textContent = "Location off"; $("loc-chip").className = "status-chip"; },
+    { enableHighAccuracy: false, maximumAge: 300000, timeout: 20000 }
+  );
+}
+
 setUpControls();
 setUpMicrophone();
+setUpLocation();
 loadConfig();

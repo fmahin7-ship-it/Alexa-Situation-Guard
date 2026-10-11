@@ -55,6 +55,7 @@ class SessionState(BaseModel):
     offers: List[Offer] = Field(default_factory=list)
     tries: List[TryRecord] = Field(default_factory=list)
     log: List[LogEntry] = Field(default_factory=list)
+    live_clock: bool = Field(False, description="`now` follows the real clock (a plan about real life)")
 
     def offer(self, label: str) -> Optional[Offer]:
         return next((o for o in self.offers if o.label == label), None)

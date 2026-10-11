@@ -7,6 +7,7 @@ from typing import List, Optional
 from pydantic import BaseModel, Field
 
 from app.core.feasibility import FeasibilityResult
+from app.events.weather.forecast import DayForecast
 from app.situations.store import SessionState
 
 
@@ -107,6 +108,29 @@ class ConfirmView(BaseModel):
     verified: bool = Field(..., description="Saved plan was reloaded and re-checked by the engine")
     feasible: Optional[bool] = None
     reasons: List[str] = Field(default_factory=list)
+    calendar_updates: List[str] = Field(default_factory=list, description="Events moved in the user's real calendar")
+
+
+class WeatherNowView(BaseModel):
+    place: str
+    time: str
+    temperature_c: Optional[float] = None
+    feels_like_c: Optional[float] = None
+    conditions: str
+    day: Optional[DayForecast] = Field(None, description="The day asked about (today if none given)")
+    live: bool
+    source: str
+    attribution: str = ""
+
+
+class CalendarAddView(BaseModel):
+    situation_id: str
+    commitment_id: str
+    event_id: str
+    title: str
+    start: str
+    end: str
+    calendar: str
 
 
 class PlanEditView(BaseModel):
@@ -130,6 +154,7 @@ class OutsideCheckView(BaseModel):
     goals_at_risk: List[str] = Field(default_factory=list)
     reasons: List[str] = Field(default_factory=list)
     notes: List[str] = Field(default_factory=list)
+    advice: List[str] = Field(default_factory=list, description="Things to tell the user, e.g. take an umbrella")
     attribution: Optional[str] = None
 
 

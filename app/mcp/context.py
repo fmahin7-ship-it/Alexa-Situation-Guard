@@ -8,6 +8,10 @@ from typing import Any, Dict, List, Optional
 
 from mcp.server.mcpserver.exceptions import ToolError
 
+from datetime import datetime
+from zoneinfo import ZoneInfo
+
+from app.calendars.google import GoogleCalendar
 from app.core.candidate import Edit, apply_edits
 from app.core.feasibility import FeasibilityResult, evaluate_situation, situation_errors
 from app.core.models import Situation
@@ -27,13 +31,23 @@ class ToolContext:
     weather: Optional[WeatherProvider] = None
     holidays: Optional[HolidayProvider] = None
     place_lookup: Optional[PlaceLookup] = None
+    calendar: Optional[GoogleCalendar] = None
 
     def load(self, situation_id: str) -> SessionState:
         try:
-            return self.store.load(situation_id)
+            state = self.store.load(situation_id)
         except KeyError as exc:
             known = ", ".join(self.store.list_ids())
             raise ToolError(f"Unknown situation '{situation_id}'. Known: {known}") from exc
+        if state.live_clock:
+            state.situation.now = real_now(state.situation.timezone)
+        return state
+
+
+def real_now(timezone: Optional[str]) -> str:
+    """The real current time, to the second, with the plan's offset."""
+    moment = datetime.now(ZoneInfo(timezone)) if timezone else datetime.now().astimezone()
+    return moment.replace(microsecond=0).isoformat()
 
 
 def apply_and_save(

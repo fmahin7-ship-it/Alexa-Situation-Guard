@@ -8,7 +8,7 @@ whether a plan works. Streamable HTTP, mounted by app.main at /mcp.
     changes   report_change
     options   find_options     try_option      confirm_option
     planning  create_situation add_place  add_resource  add_commitment  add_goal  add_dependency
-    world     check_weather    check_public_holidays          import_calendar
+    world     get_weather      check_weather  check_public_holidays  import_calendar  add_to_calendar
 
 Situations start from predefined files (data/) or are written in conversation;
 every change to a plan goes through the engine's checks before it is saved (state/).
@@ -20,6 +20,7 @@ from typing import Optional, Sequence
 
 from mcp.server.mcpserver import MCPServer
 
+from app.calendars.google import GoogleCalendar, make_calendar
 from app.mcp.context import ToolContext
 from app.events.holidays.calendar import HolidayProvider
 from app.events.holidays.nager import make_holiday_provider
@@ -53,6 +54,7 @@ def build_server(
     weather: Optional[WeatherProvider] = None,
     holidays: Optional[HolidayProvider] = None,
     place_lookup: Optional[PlaceLookup] = None,
+    calendar: Optional[GoogleCalendar] = None,
 ) -> MCPServer:
     """Anything not given is chosen from the environment (recorded/offline by default)."""
     ctx = ToolContext(
@@ -61,6 +63,7 @@ def build_server(
         weather=weather or make_weather_provider(),
         holidays=holidays or make_holiday_provider(),
         place_lookup=place_lookup or make_place_lookup(),
+        calendar=calendar or make_calendar(),
     )
     server = MCPServer(name="situation-guard", version="0.1.0", instructions=INSTRUCTIONS)
     for group in (reading, changes, options, planning, world):  # order = the order clients see the tools

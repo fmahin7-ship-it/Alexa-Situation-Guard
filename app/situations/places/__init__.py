@@ -9,6 +9,7 @@ Otherwise the place is kept without coordinates.
 
     SITUATION_GUARD_PLACES=known   (default) known places only, free and offline
     SITUATION_GUARD_PLACES=live    also look names up with Amazon Location
+    SITUATION_GUARD_HOME_ADDRESS   what "home" means when it is looked up (kept in .env, not in code)
 """
 
 from __future__ import annotations
@@ -23,6 +24,8 @@ from app.situations.places.known import find_place, known_place_names
 __all__ = ["PlaceLookup", "find_place", "known_place_names", "make_place_lookup", "place_named"]
 
 PLACES_ENV = "SITUATION_GUARD_PLACES"
+HOME_ENV = "SITUATION_GUARD_HOME_ADDRESS"
+HOME_WORDS = {"home", "my home", "my house", "house"}
 
 
 class PlaceLookup(Protocol):
@@ -64,6 +67,8 @@ def place_named(
     known = find_place(name)
     if known is not None:
         return known, []
+    if " ".join(name.lower().split()) in HOME_WORDS:
+        return _home(look_up, lookup, near)
     if not look_up:
         return plain_place(name), []
     if lookup is None:
@@ -74,3 +79,20 @@ def place_named(
         return lookup.look_up(name, near), [f"Found with {lookup.name}"]
     except Exception as exc:  # a failed lookup still leaves a usable place
         return plain_place(name), [f"Could not look up '{name}': {exc}. Kept without map coordinates"]
+
+
+def _home(look_up: bool, lookup: Optional[PlaceLookup], near: Optional[List[float]]) -> Tuple[Location, List[str]]:
+    """Home, found from the address in SITUATION_GUARD_HOME_ADDRESS when it is looked up."""
+    home = Location(id="loc_home", name="Home")
+    address = os.environ.get(HOME_ENV, "").strip()
+    if not look_up:
+        return home, []
+    if not address:
+        return home, [f"No home address is set ({HOME_ENV}), so home has no map coordinates; ask for the suburb"]
+    if lookup is None:
+        return home, [f"Looking up home is off ({PLACES_ENV}=known), so it has no map coordinates"]
+    try:
+        found = lookup.look_up(address, near)
+    except Exception as exc:
+        return home, [f"Could not look up the home address: {exc}"]
+    return found.model_copy(update={"id": "loc_home", "name": "Home"}), [f"Home found with {lookup.name}"]

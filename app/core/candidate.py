@@ -54,6 +54,8 @@ class UpdateLocation(BaseModel):
     location_id: str
     outdoor: Optional[bool] = None
     closes_on_public_holidays: Optional[bool] = None
+    latitude: Optional[float] = None
+    longitude: Optional[float] = None
 
 
 class SetUnavailability(BaseModel):
@@ -163,6 +165,8 @@ def _apply_edit(situation: Situation, edit: Edit) -> Optional[str]:
             place.outdoor = edit.outdoor
         if edit.closes_on_public_holidays is not None:
             place.closes_on_public_holidays = edit.closes_on_public_holidays
+        if edit.latitude is not None and edit.longitude is not None:
+            place.latitude, place.longitude = edit.latitude, edit.longitude
         return None
 
     if isinstance(edit, SetUnavailability):

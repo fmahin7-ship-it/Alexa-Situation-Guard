@@ -97,7 +97,7 @@ const saved = {
   remove(k) { try { sessionStorage.removeItem(k); } catch { /* ignore */ } },
 };
 let sessionId = saved.get("sg-session");
-let situationId = saved.get("sg-situation");
+let situationId = null; // no plan open until the user picks one or Alexa works on one
 let busy = false;
 let config = null;
 let scenario = null;
@@ -467,8 +467,13 @@ async function followSituation(steps) {
 
 async function selectSituation(id) {
   situationId = id;
-  saved.set("sg-situation", id);
   await loadConfig();
+}
+
+function closePlan() {
+  situationId = null;
+  if (config) renderPlanList();
+  refreshSituation();
 }
 
 function currentPlan() {
@@ -484,7 +489,6 @@ function renderPlanList() {
         p.predefined ? el("span", { class: "pi-tag" }, "sample") : null);
       b.addEventListener("click", () => {
         situationId = p.id;
-        saved.set("sg-situation", p.id);
         closeNav();
         renderPlanList();
         refreshSituation();
@@ -493,10 +497,25 @@ function renderPlanList() {
     })
   );
   const plan = currentPlan();
+  $("reset").hidden = !plan;
   $("reset").textContent = plan && !plan.predefined ? "Delete plan" : "Reset plan";
 }
 
+function renderNoPlan() {
+  lastView = null;
+  $("plan-name").textContent = "No plan open";
+  $("sit-status").hidden = true;
+  $("plan-dot").className = "mini-dot";
+  $("sit-now").textContent = "Pick a plan on the left, or tell Alexa what you’re planning.";
+  $("goals").replaceChildren();
+  $("unscheduled").hidden = true;
+  $("tl-hint").textContent = "";
+  $("timeline").style.removeProperty("--track-w");
+  $("timeline").replaceChildren(el("div", { class: "tl-empty" }, "No plan open yet."));
+}
+
 async function refreshSituation() {
+  if (!situationId) { renderNoPlan(); return; }
   try {
     const { view } = await api(`/api/situations/${encodeURIComponent(situationId)}`);
     renderPlan(view);
@@ -511,6 +530,7 @@ function renderPlan(view) {
   const tz = view.timezone;
   const live = view.commitments.filter((c) => c.status !== "cancelled");
   const pill = $("sit-status");
+  pill.hidden = false;
   const n = view.broken_commitment_ids.length;
   const status = !live.length ? "" : view.feasible ? "ok" : "bad";
   pill.textContent = !live.length ? "Empty" : view.feasible ? "Works" : `${n} problem${n === 1 ? "" : "s"}`;
@@ -678,7 +698,7 @@ async function loadConfig() {
   } else note.hidden = true;
   renderGallery();
 
-  if (!config.situations.some((p) => p.id === situationId) && config.situations.length) situationId = config.situations[0].id;
+  if (situationId && !config.situations.some((p) => p.id === situationId)) situationId = null;
   renderPlanList();
   refreshSituation();
 }
@@ -687,6 +707,7 @@ function setUpControls() {
   $("composer").addEventListener("submit", (e) => { e.preventDefault(); send($("input").value); });
   $("new-chat").addEventListener("click", async () => {
     await newChat(true);
+    closePlan();
     closeNav();
     setView("chat");
     toast("New conversation started. Your plans are kept.");

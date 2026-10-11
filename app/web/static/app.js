@@ -241,16 +241,42 @@ function setUpMicrophone() {
     mic.title = "Voice input needs Chrome or Edge. You can still type.";
     return;
   }
+  // Keep listening through short pauses; show the words as they come; send after a quiet moment.
+  const SILENCE_MS = 1500;
   const rec = new Recognition();
   rec.lang = "en-AU";
-  rec.interimResults = false;
+  rec.continuous = true;
+  rec.interimResults = true;
   let listening = false;
-  rec.onresult = (e) => send(e.results[0][0].transcript);
-  rec.onend = () => { listening = false; mic.classList.remove("listening"); if (!busy) setRing("idle", READY); };
+  let heard = "";
+  let silence = null;
+
+  const finish = () => {
+    clearTimeout(silence);
+    if (listening) rec.stop(); // onend sends what was heard
+  };
+  rec.onresult = (e) => {
+    heard = Array.from(e.results, (r) => r[0].transcript).join("").trim();
+    $("input").value = heard;
+    setRing("listening", "Listening… click the mic to send now");
+    clearTimeout(silence);
+    silence = setTimeout(finish, SILENCE_MS);
+  };
+  rec.onend = () => {
+    clearTimeout(silence);
+    listening = false;
+    mic.classList.remove("listening");
+    const text = heard;
+    heard = "";
+    if (text) send(text);
+    else if (!busy) setRing("idle", READY);
+  };
   rec.onerror = (e) => { if (!["no-speech", "aborted"].includes(e.error)) addMessage("error", `Microphone: ${e.error}`); };
   mic.addEventListener("click", () => {
-    if (listening) return rec.stop();
+    if (listening) return finish();
     if ("speechSynthesis" in window) window.speechSynthesis.cancel();
+    heard = "";
+    $("input").value = "";
     listening = true;
     mic.classList.add("listening");
     setRing("listening", "Listening…");

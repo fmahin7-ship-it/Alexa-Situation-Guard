@@ -213,7 +213,11 @@ async function send(text) {
   const controller = new AbortController();
   inflight = controller;
   try {
-    const result = await api("/api/chat", { method: "POST", signal: controller.signal, body: JSON.stringify({ text, session_id: sessionId, location: position }) });
+    const result = await api("/api/chat", { 
+      method: "POST", 
+      signal: controller.signal, 
+      body: JSON.stringify({ text, session_id: sessionId, location: position }) 
+    });
     sessionId = result.session_id;
     saved.set("sg-session", sessionId);
     typing.remove();

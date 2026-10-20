@@ -14,6 +14,7 @@ task, steps, expected vs actual, severity, workaround, and suggestion.
 | 7 | MCP Python SDK: Streamable HTTP session manager runs once per process | Low |
 | 8 | Google Calendar OAuth setup did not save; test tokens expire | Medium |
 | 9 | Browser speech recognition stops at the first pause | Medium |
+| 10 | Alexa+ MCP add-on toolkit is not open to hackathon builders | High |
 
 ---
 
@@ -130,3 +131,25 @@ task, steps, expected vs actual, severity, workaround, and suggestion.
   before sending.
 - **Suggestion:** Document the conversational set-up (continuous + interim + silence detection) next to the default
   example, which suits short commands better than conversation.
+
+## 10. The Alexa+ MCP add-on toolkit is not open to hackathon builders
+
+- **Task:** Connect my MCP server to the real Alexa+ (not only my simulated Alexa+ app), so judges could talk to it
+  on an Echo or in Amazon's web simulator.
+- **Steps:** Read the Alexa+ MCP toolkit docs (overview, quickstart, set-up, category add-on guide). My server already
+  matches the protocol they require (MCP 2025-11-25, Streamable HTTP). Read the set-up page's steps for installing
+  the `alexa-ai` CLI.
+- **Expected:** A self-serve path for a hackathon participant: install the CLI, deploy the add-on to the development
+  stage, and test it in the web simulator.
+- **Actual:** The CLI is installed from a private package repository, and the set-up page asks for the AWS account
+  "that you provided to the Alexa Solutions Architect". There is no public sign-up, so a hackathon builder cannot get
+  access. The CLI also supports only macOS and Ubuntu (I build on Windows), and the docs show only `en-US`, with no
+  word on Australia (`en-AU`). The hackathon's Alexa+ track therefore allows only a simulated Alexa+ experience.
+- **Severity:** High. It is the difference between a simulation and a real Alexa+ integration, for the track this
+  hackathon is about.
+- **Workaround:** Built the server to Alexa+'s published add-on requirements so it is ready to onboard, and built a
+  simulated Alexa+ web app that calls the same MCP server over Streamable HTTP.
+- **Suggestion:** Give hackathon participants time-limited access to the Alexa+ MCP toolkit and the web simulator
+  (for example, a sign-up form on the hackathon resources page). Publish the CLI on public npm, support Windows (or
+  document WSL), and list the supported locales and countries. A development-stage option without OAuth account
+  linking would also let builders test a working server first and add sign-in later.

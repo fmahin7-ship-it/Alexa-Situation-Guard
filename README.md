@@ -9,7 +9,7 @@ Built for the **Alexa+ track** of the Amazon *Build, Ship, Shape* hackathon as:
 - a **self-hosted MCP server** (Streamable HTTP, protocol `2025-11-25`) that Alexa+ or any MCP client can call, and
 - a **simulated Alexa+ web app** (voice in, voice out) that talks to that same MCP server.
 
-> Demo video: _add link_
+> **Demo video (2:55):** https://youtu.be/Ar4QO3teP0U
 
 ---
 

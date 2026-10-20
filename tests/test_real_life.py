@@ -339,3 +339,18 @@ def test_prompt_tells_alexa_where_the_user_is():
     text = system_prompt("Australia/Sydney", location=(-33.87, 151.21))
     assert "latitude -33.87000, longitude 151.21000" in text and "Current location" in text
     assert "latitude" not in system_prompt("Australia/Sydney").split("The current time")[1]
+
+
+def test_live_lookup_never_uses_the_built_in_sydney_places():
+    class Near:
+        name, live = "fake-places", True
+
+        def look_up(self, name, near=None):
+            return Location(id="loc_found", name=f"{name} (found near you)", latitude=-37.67, longitude=144.84)
+
+    for said in ("the airport", "Sydney Airport", "Melbourne Airport", "Central"):
+        place, notes = place_named(said, look_up=True, lookup=Near())
+        assert place.id == "loc_found", said
+    # Offline (no live lookup), the built-in places still serve the recorded demo.
+    assert place_named("the airport")[0].id == "loc_airport_t1"
+    assert place_named("Central")[0].id == "loc_central"

@@ -237,7 +237,7 @@ def register(server: MCPServer, ctx: ToolContext) -> None:
                 continue
             location_id = None
             if event.location:
-                place, _ = place_named(event.location)
+                place, _ = place_named(event.location, lookup=ctx.place_lookup)
                 if place.id not in known_places:
                     edits.append(AddLocation(location=place))
                     known_places.add(place.id)
@@ -339,8 +339,8 @@ def register(server: MCPServer, ctx: ToolContext) -> None:
         )
 
     def _weather_point(place: str) -> GeoPoint:
-        """Known places and home first, then the weather service's town search, then a full place lookup."""
-        found, notes = place_named(place)
+        """Home (or, offline, a built-in place) first, then the weather service's town search, then a place lookup."""
+        found, notes = place_named(place, lookup=ctx.place_lookup)
         if found.latitude is None and found.id == "loc_home":
             found, notes = place_named(place, look_up=True, lookup=ctx.place_lookup)
             if found.latitude is None:

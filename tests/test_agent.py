@@ -16,7 +16,7 @@ from mcp import Client
 
 from app.agent.providers.bedrock_converse import BedrockConverseProvider, _simplify_schema, converse_request
 from app.agent.llm import LLM_ENV, LLMError, LLMReply, Message, ToolCall, ToolResult, ToolSpec, Usage, make_llm_provider
-from app.agent.loop import run_turn
+from app.agent.loop import MAX_STEPS, run_turn
 from app.agent.tool_runner import McpToolRunner
 from app.agent.providers.scripted import ScriptedProvider, guided_policy, load_scenario
 from app.mcp.server import build_server
@@ -134,7 +134,7 @@ class _Unreachable:
 
 def test_loop_stops_after_max_steps(tmp_path):
     (turn,), _ = _conversation(tmp_path, _AlwaysCallsTools(), ["hi"])
-    assert turn.stopped_early and len(turn.steps) == 10
+    assert turn.stopped_early and len(turn.steps) == MAX_STEPS
     assert "too many steps" in turn.reply
 
 

@@ -2,9 +2,11 @@
 
 Any name is a place ("the drawing room", "the office"). Coordinates, which only
 travel and weather need, come from:
-  1. known places (verified, free), then
-  2. Amazon Location Places, when asked to look the name up and
-     SITUATION_GUARD_PLACES=live (billed per lookup).
+  - live (SITUATION_GUARD_PLACES=live): Amazon Location Places, searched near the user
+    when asked to look the name up (billed per lookup). Nothing is built in, so
+    "the airport" is whichever airport is near you.
+  - offline (known, the default): a few built-in places with verified coordinates,
+    the points the recorded demo routes were made between (Sydney Central, Sydney Airport).
 Otherwise the place is kept without coordinates.
 
     SITUATION_GUARD_PLACES=known   (default) known places only, free and offline
@@ -61,14 +63,16 @@ def place_named(
     near: Optional[List[float]] = None,
 ) -> Tuple[Location, List[str]]:
     """
-    (place, notes). Known places come with coordinates; with look_up=True and a lookup
-    available, other names are searched; anything else is a plain place without coordinates.
+    (place, notes). With a live lookup, names asked to be looked up are searched near the user and
+    the built-in places are never used. Offline, the built-in places (made for the recorded demo)
+    come with coordinates. Anything else is a plain place without coordinates.
     """
-    known = find_place(name)
-    if known is not None:
-        return known, []
     if " ".join(name.lower().split()) in HOME_WORDS:
         return _home(look_up, lookup, near)
+    if lookup is None:
+        known = find_place(name)
+        if known is not None:
+            return known, []
     if not look_up:
         return plain_place(name), []
     if lookup is None:

@@ -170,6 +170,9 @@ def test_places_match_how_people_say_them():
     assert find_place("Sydney International Airport T1").id == "loc_airport_t1"
     assert find_place("Central").id == "loc_central"
     assert find_place("Melbourne") is None
+    # A generic word inside another place's name is that other place, not a known one.
+    assert find_place("Melbourne Airport") is None
+    assert find_place("Melbourne Central") is None
 
 
 def test_forget_deletes_only_plans_made_in_conversation(tools):

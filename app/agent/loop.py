@@ -19,6 +19,10 @@ from app.agent.llm import LLMError, LLMProvider, Message, ToolCall, ToolResult, 
 from app.agent.prompt import SYSTEM_PROMPT
 from app.agent.tool_runner import ToolRunner
 
+# LLM calls per user turn. A trip (places, journey, route search, several tries) needs well over 10.
+MAX_STEPS = 24
+
+
 class Step(BaseModel):
     """One tool call and what came back — what the proof panel shows."""
 
@@ -42,7 +46,7 @@ async def run_turn(
     history: List[Message],
     user_text: str,
     system: str = SYSTEM_PROMPT,
-    max_steps: int = 10,
+    max_steps: int = MAX_STEPS,
     tool_specs: Optional[List[ToolSpec]] = None,
 ) -> TurnResult:
     """Run one user turn to a final spoken reply. `history` is not modified."""
